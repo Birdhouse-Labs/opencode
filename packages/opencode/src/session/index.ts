@@ -249,12 +249,17 @@ export namespace Session {
         idMap.set(msg.info.id, newID)
 
         const parentID = msg.info.role === "assistant" && msg.info.parentID ? idMap.get(msg.info.parentID) : undefined
-        const cloned = await updateMessage({
+        // Backfill agent field from mode for messages created before agent was added (Dec 14, 2025)
+        const messageData = {
           ...msg.info,
           sessionID: session.id,
           id: newID,
           ...(parentID && { parentID }),
-        })
+        }
+        if (messageData.role === "assistant" && !messageData.agent) {
+          messageData.agent = messageData.mode
+        }
+        const cloned = await updateMessage(messageData)
 
         for (const part of msg.parts) {
           await updatePart({
