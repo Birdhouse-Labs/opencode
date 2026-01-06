@@ -352,6 +352,44 @@ export const SessionRoutes = lazy(() =>
       },
     )
     .post(
+      "/:sessionID/wait",
+      describeRoute({
+        summary: "Wait for session completion",
+        description:
+          "Blocks until the session completes (finish reason is not 'tool-calls' or 'unknown'). This uses the same logic as OpenCode's internal task waiting mechanism.",
+        tags: ["Session"],
+        operationId: "session.wait",
+        responses: {
+          200: {
+            description: "Session completed",
+            content: {
+              "application/json": {
+                schema: resolver(MessageV2.WithParts),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: Session.get.schema,
+        }),
+      ),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+
+        // Verify session exists (throws 404 if not found)
+        await Session.get(sessionID)
+
+        // Use the internal loop() that implements correct waiting
+        const result = await SessionPrompt.loop({ sessionID })
+
+        return c.json(result)
+      },
+    )
+    .post(
       "/:sessionID/abort",
       describeRoute({
         summary: "Abort session",

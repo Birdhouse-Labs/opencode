@@ -143,6 +143,8 @@ import type {
   SessionUnshareResponses,
   SessionUpdateErrors,
   SessionUpdateResponses,
+  SessionWaitErrors,
+  SessionWaitResponses,
   SubtaskPartInput,
   TextPartInput,
   ToolIdsErrors,
@@ -1307,6 +1309,36 @@ export class Session2 extends HeyApiClient {
         ...options?.headers,
         ...params.headers,
       },
+    })
+  }
+
+  /**
+   * Wait for session completion
+   *
+   * Blocks until the session completes (finish reason is not 'tool-calls' or 'unknown'). This uses the same logic as OpenCode's internal task waiting mechanism.
+   */
+  public wait<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionWaitResponses, SessionWaitErrors, ThrowOnError>({
+      url: "/session/{sessionID}/wait",
+      ...options,
+      ...params,
     })
   }
 
