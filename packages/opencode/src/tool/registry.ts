@@ -6,7 +6,7 @@ import { GlobTool } from "./glob"
 import { GrepTool } from "./grep"
 import { BatchTool } from "./batch"
 import { ReadTool } from "./read"
-import { TaskTool } from "./task"
+// import { TaskTool } from "./task" // Disabled - using Birdhouse agent tools instead
 import { TodoWriteTool, TodoReadTool } from "./todo"
 import { WebFetchTool } from "./webfetch"
 import { WriteTool } from "./write"
@@ -109,7 +109,7 @@ export namespace ToolRegistry {
       GrepTool,
       EditTool,
       WriteTool,
-      TaskTool,
+      // TaskTool, // Disabled - using subagents instead
       WebFetchTool,
       TodoWriteTool,
       // TodoReadTool,
