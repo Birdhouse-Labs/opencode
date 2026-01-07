@@ -243,8 +243,19 @@ export namespace Session {
       const msgs = await messages({ sessionID: input.sessionID })
       const idMap = new Map<string, string>()
 
+      // Determine the comparison operator based on target message role
+      // If forking from an assistant message, include it (use >)
+      // If forking from a user message, exclude it (use >=)
+      const targetMessage = input.messageID ? msgs.find((m) => m.info.id === input.messageID) : undefined
+      const shouldIncludeTarget = targetMessage ? targetMessage.info.role !== "user" : false
+
       for (const msg of msgs) {
-        if (input.messageID && msg.info.id >= input.messageID) break
+        if (input.messageID) {
+          const shouldBreak = shouldIncludeTarget
+            ? msg.info.id > input.messageID
+            : msg.info.id >= input.messageID
+          if (shouldBreak) break
+        }
         const newID = Identifier.ascending("message")
         idMap.set(msg.info.id, newID)
 

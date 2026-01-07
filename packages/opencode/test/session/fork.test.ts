@@ -162,48 +162,38 @@ describe("Session.fork", () => {
       fn: async () => {
         const session = await Session.create({})
 
-        // Create two messages
-        const message1: MessageV2.Assistant = {
+        // Create user and assistant messages
+        const userMessage1: MessageV2.User = {
           id: Identifier.ascending("message"),
           sessionID: session.id,
-          role: "assistant",
+          role: "user",
           time: {
             created: Date.now(),
           },
-          parentID: Identifier.ascending("message"),
-          modelID: "claude-3-5-sonnet-20241022",
-          providerID: "anthropic",
-          mode: "build",
-          agent: "build",
-          path: {
-            cwd: projectRoot,
-            root: projectRoot,
+          summary: {
+            title: "Test",
+            diffs: [],
           },
-          cost: 0,
-          tokens: {
-            input: 0,
-            output: 0,
-            reasoning: 0,
-            cache: {
-              read: 0,
-              write: 0,
-            },
+          agent: "build",
+          model: {
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet-20241022",
           },
         }
 
-        await Session.updateMessage(message1)
+        await Session.updateMessage(userMessage1)
 
         // Small delay to ensure different timestamps
         await new Promise((resolve) => setTimeout(resolve, 10))
 
-        const message2: MessageV2.Assistant = {
+        const assistantMessage1: MessageV2.Assistant = {
           id: Identifier.ascending("message"),
           sessionID: session.id,
           role: "assistant",
           time: {
             created: Date.now(),
           },
-          parentID: Identifier.ascending("message"),
+          parentID: userMessage1.id,
           modelID: "claude-3-5-sonnet-20241022",
           providerID: "anthropic",
           mode: "build",
@@ -224,22 +214,155 @@ describe("Session.fork", () => {
           },
         }
 
-        await Session.updateMessage(message2)
+        await Session.updateMessage(assistantMessage1)
 
-        // Fork up to message1 (should not include message2)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        const userMessage2: MessageV2.User = {
+          id: Identifier.ascending("message"),
+          sessionID: session.id,
+          role: "user",
+          time: {
+            created: Date.now(),
+          },
+          summary: {
+            title: "Test 2",
+            diffs: [],
+          },
+          agent: "build",
+          model: {
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet-20241022",
+          },
+        }
+
+        await Session.updateMessage(userMessage2)
+
+        // Fork at userMessage2 (should not include it - user messages are excluded)
         const forkedSession = await Session.fork({
           sessionID: session.id,
-          messageID: message2.id,
+          messageID: userMessage2.id,
         })
 
         const forkedMessages = await Session.messages({
           sessionID: forkedSession.id,
         })
 
-        // Should only have message1
-        expect(forkedMessages.length).toBe(1)
-        expect(forkedMessages[0].info.id).not.toBe(message1.id)
-        expect(forkedMessages[0].info.id).not.toBe(message2.id)
+        // Should have 2 messages (userMessage1 + assistantMessage1), excluding userMessage2
+        expect(forkedMessages.length).toBe(2)
+        expect(forkedMessages[0].info.id).not.toBe(userMessage1.id)
+        expect(forkedMessages[0].info.id).not.toBe(assistantMessage1.id)
+        expect(forkedMessages[0].info.id).not.toBe(userMessage2.id)
+
+        await Session.remove(session.id)
+        await Session.remove(forkedSession.id)
+      },
+    })
+  })
+
+  test("should fork including an assistant message", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const session = await Session.create({})
+
+        // Create user and assistant messages
+        const userMessage1: MessageV2.User = {
+          id: Identifier.ascending("message"),
+          sessionID: session.id,
+          role: "user",
+          time: {
+            created: Date.now(),
+          },
+          summary: {
+            title: "Test",
+            diffs: [],
+          },
+          agent: "build",
+          model: {
+            providerID: "anthropic",
+            modelID: "claude-3-5-sonnet-20241022",
+          },
+        }
+
+        await Session.updateMessage(userMessage1)
+
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        const assistantMessage1: MessageV2.Assistant = {
+          id: Identifier.ascending("message"),
+          sessionID: session.id,
+          role: "assistant",
+          time: {
+            created: Date.now(),
+          },
+          parentID: userMessage1.id,
+          modelID: "claude-3-5-sonnet-20241022",
+          providerID: "anthropic",
+          mode: "build",
+          agent: "build",
+          path: {
+            cwd: projectRoot,
+            root: projectRoot,
+          },
+          cost: 0,
+          tokens: {
+            input: 0,
+            output: 0,
+            reasoning: 0,
+            cache: {
+              read: 0,
+              write: 0,
+            },
+          },
+        }
+
+        await Session.updateMessage(assistantMessage1)
+
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        const assistantMessage2: MessageV2.Assistant = {
+          id: Identifier.ascending("message"),
+          sessionID: session.id,
+          role: "assistant",
+          time: {
+            created: Date.now(),
+          },
+          parentID: userMessage1.id,
+          modelID: "claude-3-5-sonnet-20241022",
+          providerID: "anthropic",
+          mode: "build",
+          agent: "build",
+          path: {
+            cwd: projectRoot,
+            root: projectRoot,
+          },
+          cost: 0,
+          tokens: {
+            input: 0,
+            output: 0,
+            reasoning: 0,
+            cache: {
+              read: 0,
+              write: 0,
+            },
+          },
+        }
+
+        await Session.updateMessage(assistantMessage2)
+
+        // Fork at assistantMessage2 (should INCLUDE it - assistant messages are included)
+        const forkedSession = await Session.fork({
+          sessionID: session.id,
+          messageID: assistantMessage2.id,
+        })
+
+        const forkedMessages = await Session.messages({
+          sessionID: forkedSession.id,
+        })
+
+        // Should have all 3 messages (user1 + assistant1 + assistant2)
+        expect(forkedMessages.length).toBe(3)
 
         await Session.remove(session.id)
         await Session.remove(forkedSession.id)
