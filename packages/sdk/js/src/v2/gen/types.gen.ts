@@ -2898,6 +2898,42 @@ export type SessionForkResponses = {
 
 export type SessionForkResponse = SessionForkResponses[keyof SessionForkResponses]
 
+export type SessionWaitData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+  }
+  url: "/session/{sessionID}/wait"
+}
+
+export type SessionWaitErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionWaitError = SessionWaitErrors[keyof SessionWaitErrors]
+
+export type SessionWaitResponses = {
+  /**
+   * Session completed
+   */
+  200: {
+    info: Message
+    parts: Array<Part>
+  }
+}
+
+export type SessionWaitResponse = SessionWaitResponses[keyof SessionWaitResponses]
+
 export type SessionAbortData = {
   body?: never
   path: {
@@ -4778,3 +4814,68 @@ export type EventSubscribeResponses = {
 }
 
 export type EventSubscribeResponse = EventSubscribeResponses[keyof EventSubscribeResponses]
+
+export type LlmGenerateData = {
+  body?: {
+    /**
+     * Base system prompt (alternative to agent)
+     */
+    prompt?: string
+    /**
+     * Additional system instructions for this call
+     */
+    system?: Array<string>
+    /**
+     * User message
+     */
+    message: string
+    /**
+     * Use existing agent (e.g., 'title')
+     */
+    agent?: string
+    /**
+     * Specify model
+     */
+    model?: {
+      providerID: string
+      modelID: string
+    }
+    /**
+     * Use small/fast model settings
+     */
+    small?: boolean
+    /**
+     * Maximum output tokens
+     */
+    maxTokens?: number
+  }
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/llm/generate"
+}
+
+export type LlmGenerateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type LlmGenerateError = LlmGenerateErrors[keyof LlmGenerateErrors]
+
+export type LlmGenerateResponses = {
+  /**
+   * Generated text response
+   */
+  200: {
+    text: string
+    usage?: {
+      inputTokens: number
+      outputTokens: number
+    }
+  }
+}
+
+export type LlmGenerateResponse = LlmGenerateResponses[keyof LlmGenerateResponses]

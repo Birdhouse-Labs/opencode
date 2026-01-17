@@ -30,6 +30,9 @@ import { ConfigRoutes } from "./routes/config"
 import { ExperimentalRoutes } from "./routes/experimental"
 import { ProviderRoutes } from "./routes/provider"
 import { lazy } from "../util/lazy"
+import { LLM } from "../session/llm"
+import { MessageV2 } from "../session/message-v2"
+import { Identifier } from "../id/id"
 import { InstanceBootstrap } from "../project/bootstrap"
 import { NotFoundError } from "../storage/db"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
@@ -538,6 +541,145 @@ export namespace Server {
                 })
               })
             })
+          },
+        )
+        .post(
+          "/llm/generate",
+          describeRoute({
+            summary: "Generate LLM response",
+            description: "Generate a one-off LLM response without creating a session or storing messages.",
+            operationId: "llm.generate",
+            responses: {
+              200: {
+                description: "Generated text response",
+                content: {
+                  "application/json": {
+                    schema: resolver(
+                      z.object({
+                        text: z.string(),
+                        usage: z
+                          .object({
+                            inputTokens: z.number(),
+                            outputTokens: z.number(),
+                          })
+                          .optional(),
+                      }),
+                    ),
+                  },
+                },
+              },
+              ...errors(400, 500),
+            },
+          }),
+          validator(
+            "json",
+            z.object({
+              prompt: z.string().optional().describe("Base system prompt (alternative to agent)"),
+              system: z.array(z.string()).optional().describe("Additional system instructions for this call"),
+              message: z.string().describe("User message"),
+              agent: z.string().optional().describe("Use existing agent (e.g., 'title')"),
+              model: z
+                .object({
+                  providerID: z.string(),
+                  modelID: z.string(),
+                })
+                .optional()
+                .describe("Specify model"),
+              small: z.boolean().optional().default(true).describe("Use small/fast model settings"),
+              maxTokens: z.number().optional().default(200).describe("Maximum output tokens"),
+            }),
+          ),
+          async (c) => {
+            try {
+              const body = c.req.valid("json")
+
+              // Get or create agent
+              let agent: Agent.Info
+              if (body.agent) {
+                const existingAgent = await Agent.get(body.agent)
+                if (!existingAgent) {
+                  return c.json({ error: `Agent '${body.agent}' not found` }, 400)
+                }
+                agent = existingAgent
+              } else {
+                // Create a minimal ephemeral agent with custom prompt
+                agent = {
+                  name: "ephemeral",
+                  prompt: body.prompt || "",
+                  options: body.maxTokens ? { maxOutputTokens: body.maxTokens } : {},
+                  mode: "primary",
+                  permission: [],
+                } as Agent.Info
+              }
+
+              // Get model
+              const modelToUse = body.model
+                ? await Provider.getModel(body.model.providerID, body.model.modelID)
+                : await Provider.defaultModel()
+
+              const model = (
+                body.small && !body.model
+                  ? ((await Provider.getSmallModel(modelToUse.providerID)) ?? modelToUse)
+                  : modelToUse
+              ) as Awaited<ReturnType<typeof Provider.getModel>>
+
+              // Create a temporary message ID
+              const messageID = Identifier.ascending("message")
+
+              // Call LLM.stream with ephemeral session
+              const result = await LLM.stream({
+                agent,
+                user: {
+                  id: messageID,
+                  role: "user",
+                  sessionID: "ephemeral",
+                  time: {
+                    created: Date.now(),
+                  },
+                  agent: await Agent.defaultAgent(),
+                  model: {
+                    providerID: model.providerID,
+                    modelID: model.id,
+                  },
+                } as MessageV2.User,
+                system: body.system || [],
+                small: body.small ?? true,
+                tools: {},
+                model,
+                abort: new AbortController().signal,
+                sessionID: "ephemeral",
+                retries: 2,
+                messages: [
+                  {
+                    role: "user",
+                    content: body.message,
+                  },
+                ],
+              })
+
+              // Extract text from result
+              const text = await result.text
+
+              // Get usage stats if available
+              const rawUsage = await result.usage
+              const usage = {
+                inputTokens: rawUsage.inputTokens ?? 0,
+                outputTokens: rawUsage.outputTokens ?? 0,
+              }
+
+              return c.json({
+                text,
+                usage,
+              })
+            } catch (error) {
+              log.error("llm.generate failed", { error })
+              return c.json(
+                {
+                  error: error instanceof Error ? error.message : "Internal server error",
+                },
+                500,
+              )
+            }
           },
         )
         .all("/*", async (c) => {

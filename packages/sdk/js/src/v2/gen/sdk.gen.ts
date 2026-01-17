@@ -42,6 +42,8 @@ import type {
   GlobalEventResponses,
   GlobalHealthResponses,
   InstanceDisposeResponses,
+  LlmGenerateErrors,
+  LlmGenerateResponses,
   LspStatusResponses,
   McpAddErrors,
   McpAddResponses,
@@ -3301,6 +3303,58 @@ export class Event extends HeyApiClient {
   }
 }
 
+export class Llm extends HeyApiClient {
+  /**
+   * Generate LLM response
+   *
+   * Generate a one-off LLM response without creating a session or storing messages.
+   */
+  public generate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      prompt?: string
+      system?: Array<string>
+      message?: string
+      agent?: string
+      model?: {
+        providerID: string
+        modelID: string
+      }
+      small?: boolean
+      maxTokens?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "body", key: "prompt" },
+            { in: "body", key: "system" },
+            { in: "body", key: "message" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "model" },
+            { in: "body", key: "small" },
+            { in: "body", key: "maxTokens" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<LlmGenerateResponses, LlmGenerateErrors, ThrowOnError>({
+      url: "/llm/generate",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class OpencodeClient extends HeyApiClient {
   public static readonly __registry = new HeyApiRegistry<OpencodeClient>()
 
@@ -3432,5 +3486,10 @@ export class OpencodeClient extends HeyApiClient {
   private _event?: Event
   get event(): Event {
     return (this._event ??= new Event({ client: this.client }))
+  }
+
+  private _llm?: Llm
+  get llm(): Llm {
+    return (this._llm ??= new Llm({ client: this.client }))
   }
 }
