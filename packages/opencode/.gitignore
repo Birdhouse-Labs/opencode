@@ -3,3 +3,6 @@ dist
 gen
 app.log
 src/provider/models-snapshot.ts
+
+# Birdhouse plugin (copied during build, not version controlled)
+src/plugin/birdhouse.ts
