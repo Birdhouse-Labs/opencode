@@ -91,6 +91,57 @@ export namespace Project {
     log.info("fromDirectory", { directory })
 
     const data = await iife(async () => {
+      // If OPENCODE_PROJECT_ID is set, use it directly - no calculation from git
+      if (Flag.OPENCODE_PROJECT_ID) {
+        log.info("using forced project ID from OPENCODE_PROJECT_ID", {
+          id: Flag.OPENCODE_PROJECT_ID,
+        })
+
+        // Still detect git worktree for vcs and sandbox info
+        const gitMatches = Filesystem.up({ targets: [".git"], start: directory })
+        const dotgitPath = await gitMatches.next().then((x) => x.value)
+        await gitMatches.return()
+
+        if (!dotgitPath) {
+          return {
+            id: Flag.OPENCODE_PROJECT_ID,
+            worktree: directory,
+            sandbox: directory,
+            vcs: Info.shape.vcs.parse(Flag.OPENCODE_FAKE_VCS),
+          }
+        }
+
+        let sandbox = path.dirname(dotgitPath)
+        const gitBinary = Bun.which("git")
+
+        if (!gitBinary) {
+          return {
+            id: Flag.OPENCODE_PROJECT_ID,
+            worktree: sandbox,
+            sandbox: sandbox,
+            vcs: Info.shape.vcs.parse(Flag.OPENCODE_FAKE_VCS),
+          }
+        }
+
+        const topResult = await git(["rev-parse", "--show-toplevel"], { cwd: sandbox }).catch(() => undefined)
+        if (topResult && topResult.exitCode === 0) {
+          sandbox = gitpath(sandbox, await topResult.text())
+        }
+
+        const worktree = await git(["rev-parse", "--git-common-dir"], { cwd: sandbox })
+          .then(async (result) => {
+            const common = gitpath(sandbox, await result.text())
+            return common === sandbox ? sandbox : path.dirname(common)
+          })
+          .catch(() => sandbox)
+
+        return {
+          id: Flag.OPENCODE_PROJECT_ID,
+          worktree,
+          sandbox,
+          vcs: "git" as const,
+        }
+      }
       const matches = Filesystem.up({ targets: [".git"], start: directory })
       const dotgit = await matches.next().then((x) => x.value)
       await matches.return()
