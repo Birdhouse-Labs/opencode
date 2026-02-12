@@ -21,6 +21,8 @@ export namespace Plugin {
   // Built-in plugins that are directly imported (not installed from npm)
   const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, CopilotAuthPlugin, GitlabAuthPlugin]
 
+  const BUILTIN_LOCAL = ["birdhouse"] // Built-in plugins bundled with OpenCode
+
   const state = Instance.state(async () => {
     const client = createOpencodeClient({
       baseUrl: "http://localhost:4096",
@@ -57,6 +59,26 @@ export namespace Plugin {
       // ignore old codex plugin since it is supported first party now
       if (plugin.includes("opencode-openai-codex-auth") || plugin.includes("opencode-copilot-auth")) continue
       log.info("loading plugin", { path: plugin })
+      
+      // Handle built-in local plugins (bundled with OpenCode)
+      if (BUILTIN_LOCAL.includes(plugin)) {
+        if (plugin === "birdhouse") {
+          // birdhouse.ts is copied during build from monorepo, not tracked in source
+          // @ts-ignore - module does not exist until build time
+          const mod = await import("./birdhouse").catch(() => undefined)
+          if (mod) {
+            const seen = new Set<PluginInstance>()
+            for (const [_name, fn] of Object.entries<PluginInstance>(mod)) {
+              if (seen.has(fn)) continue
+              seen.add(fn)
+              const init = await fn(input)
+              hooks.push(init)
+            }
+          }
+        }
+        continue
+      }
+      
       if (!plugin.startsWith("file://")) {
         const lastAtIndex = plugin.lastIndexOf("@")
         const pkg = lastAtIndex > 0 ? plugin.substring(0, lastAtIndex) : plugin
