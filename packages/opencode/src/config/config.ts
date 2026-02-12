@@ -84,35 +84,37 @@ export namespace Config {
     // 6) Inline config (OPENCODE_CONFIG_CONTENT)
     // Managed config directory is enterprise-only and always overrides everything above.
     let result: Info = {}
-    for (const [key, value] of Object.entries(auth)) {
-      if (value.type === "wellknown") {
-        process.env[value.key] = value.token
-        log.debug("fetching remote config", { url: `${key}/.well-known/opencode` })
-        const response = await fetch(`${key}/.well-known/opencode`)
-        if (!response.ok) {
-          throw new Error(`failed to fetch remote config from ${key}: ${response.status}`)
+    if (!Flag.OPENCODE_DISABLE_GLOBAL_CONFIG) {
+      for (const [key, value] of Object.entries(auth)) {
+        if (value.type === "wellknown") {
+          process.env[value.key] = value.token
+          log.debug("fetching remote config", { url: `${key}/.well-known/opencode` })
+          const response = await fetch(`${key}/.well-known/opencode`)
+          if (!response.ok) {
+            throw new Error(`failed to fetch remote config from ${key}: ${response.status}`)
+          }
+          const wellknown = (await response.json()) as any
+          const remoteConfig = wellknown.config ?? {}
+          // Add $schema to prevent load() from trying to write back to a non-existent file
+          if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
+          result = mergeConfigConcatArrays(
+            result,
+            await load(JSON.stringify(remoteConfig), {
+              dir: path.dirname(`${key}/.well-known/opencode`),
+              source: `${key}/.well-known/opencode`,
+            }),
+          )
+          log.debug("loaded remote config from well-known", { url: key })
         }
-        const wellknown = (await response.json()) as any
-        const remoteConfig = wellknown.config ?? {}
-        // Add $schema to prevent load() from trying to write back to a non-existent file
-        if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
-        result = mergeConfigConcatArrays(
-          result,
-          await load(JSON.stringify(remoteConfig), {
-            dir: path.dirname(`${key}/.well-known/opencode`),
-            source: `${key}/.well-known/opencode`,
-          }),
-        )
-        log.debug("loaded remote config from well-known", { url: key })
       }
-    }
 
-    const token = await Control.token()
-    if (token) {
-    }
+      const token = await Control.token()
+      if (token) {
+      }
 
-    // Global user config overrides remote config.
-    result = mergeConfigConcatArrays(result, await global())
+      // Global user config overrides remote config.
+      result = mergeConfigConcatArrays(result, await global())
+    }
 
     // Custom config path overrides global config.
     if (Flag.OPENCODE_CONFIG) {
@@ -131,9 +133,31 @@ export namespace Config {
     result.mode = result.mode || {}
     result.plugin = result.plugin || []
 
-    const directories = await ConfigPaths.directories(Instance.directory, Instance.worktree)
+    const directories = [
+      ...(Flag.OPENCODE_DISABLE_GLOBAL_CONFIG ? [] : [Global.Path.config]),
+      // Scan project .opencode/ directories only when both project and global config are enabled
+      ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG && !Flag.OPENCODE_DISABLE_GLOBAL_CONFIG
+        ? await Array.fromAsync(
+            Filesystem.up({
+              targets: [".opencode"],
+              start: Instance.directory,
+              stop: Instance.worktree,
+            }),
+          )
+        : []),
+      ...(Flag.OPENCODE_DISABLE_GLOBAL_CONFIG
+        ? []
+        : await Array.fromAsync(
+            Filesystem.up({
+              targets: [".opencode"],
+              start: Global.Path.home,
+              stop: Global.Path.home,
+            }),
+          )),
+      // OPENCODE_CONFIG_DIR always takes effect (overrides above sources)
+      ...(Flag.OPENCODE_CONFIG_DIR ? [Flag.OPENCODE_CONFIG_DIR] : []),
+    ]
 
-    // .opencode directory config overrides (project and global) config sources.
     if (Flag.OPENCODE_CONFIG_DIR) {
       log.debug("loading config from OPENCODE_CONFIG_DIR", { path: Flag.OPENCODE_CONFIG_DIR })
     }
