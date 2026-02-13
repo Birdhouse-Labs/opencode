@@ -35,6 +35,12 @@ export namespace Flag {
   export const OPENCODE_ENABLE_QUESTION_TOOL = truthy("OPENCODE_ENABLE_QUESTION_TOOL")
   export const OPENCODE_PROJECT_ID = process.env["OPENCODE_PROJECT_ID"]
 
+  // XDG Base Directory overrides for workspace isolation
+  export const OPENCODE_XDG_DATA_HOME = process.env["OPENCODE_XDG_DATA_HOME"]
+  export const OPENCODE_XDG_CONFIG_HOME = process.env["OPENCODE_XDG_CONFIG_HOME"]
+  export const OPENCODE_XDG_CACHE_HOME = process.env["OPENCODE_XDG_CACHE_HOME"]
+  export const OPENCODE_XDG_STATE_HOME = process.env["OPENCODE_XDG_STATE_HOME"]
+
   // Experimental
   export const OPENCODE_EXPERIMENTAL = truthy("OPENCODE_EXPERIMENTAL")
   export const OPENCODE_EXPERIMENTAL_FILEWATCHER = truthy("OPENCODE_EXPERIMENTAL_FILEWATCHER")
