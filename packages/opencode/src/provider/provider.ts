@@ -894,11 +894,16 @@ export namespace Provider {
     const env = Env.all()
     for (const [providerID, provider] of Object.entries(database)) {
       if (disabled.has(providerID)) continue
-      const apiKey = provider.env.map((item) => env[item]).find(Boolean)
+      // Only check actual API key env vars, not config vars like AWS_REGION
+      // AWS_REGION alone is not sufficient to authenticate
+      const keyEnvVars = provider.env.filter((item) => 
+        !item.includes("REGION") && !item.includes("ENDPOINT") && !item.includes("URL")
+      )
+      const apiKey = keyEnvVars.map((item) => env[item]).find(Boolean)
       if (!apiKey) continue
       mergeProvider(providerID, {
         source: "env",
-        key: provider.env.length === 1 ? apiKey : undefined,
+        key: keyEnvVars.length === 1 ? apiKey : undefined,
       })
     }
 
@@ -968,11 +973,16 @@ export namespace Provider {
         continue
       }
       const result = await fn(data)
-      if (result && (result.autoload || providers[providerID])) {
+      if (result) {
         if (result.getModel) modelLoaders[providerID] = result.getModel
         const opts = result.options ?? {}
-        const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
-        mergeProvider(providerID, patch)
+        if (providers[providerID]) {
+          // Provider already loaded (e.g. from env): only merge options, don't change source
+          if (Object.keys(opts).length > 0) mergeProvider(providerID, { options: opts })
+        } else if (result.autoload) {
+          // Provider not yet loaded: only add it if the loader wants to autoload
+          mergeProvider(providerID, { source: "custom", options: opts })
+        }
       }
     }
 
