@@ -2351,3 +2351,117 @@ describe("ProviderTransform.variants", () => {
     })
   })
 })
+
+describe("ProviderTransform.smallOptions", () => {
+  const createMockModel = (overrides: Partial<any> = {}): any => ({
+    id: "test/test-model",
+    providerID: "test",
+    api: {
+      id: "test-model",
+      url: "https://api.test.com",
+      npm: "@ai-sdk/openai",
+    },
+    name: "Test Model",
+    capabilities: {
+      temperature: true,
+      reasoning: true,
+      attachment: true,
+      toolcall: true,
+      input: { text: true, audio: false, image: true, video: false, pdf: false },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved: false,
+    },
+    cost: {
+      input: 0.001,
+      output: 0.002,
+      cache: { read: 0.0001, write: 0.0002 },
+    },
+    limit: {
+      context: 128000,
+      output: 8192,
+    },
+    status: "active",
+    options: {},
+    headers: {},
+    release_date: "2024-01-01",
+    ...overrides,
+  })
+
+  test("OpenAI non-gpt5 models get store: false for small mode", () => {
+    const model = createMockModel({
+      providerID: "openai",
+      api: {
+        id: "gpt-4",
+        url: "https://api.openai.com",
+        npm: "@ai-sdk/openai",
+      },
+    })
+    const result = ProviderTransform.smallOptions(model)
+    expect(result).toEqual({ store: false })
+  })
+
+  test("OpenAI gpt-5 models (with dot) get store: false and reasoningEffort low", () => {
+    const model = createMockModel({
+      providerID: "openai",
+      api: {
+        id: "gpt-5.test",
+        url: "https://api.openai.com",
+        npm: "@ai-sdk/openai",
+      },
+    })
+    const result = ProviderTransform.smallOptions(model)
+    expect(result).toEqual({ store: false, reasoningEffort: "low" })
+  })
+
+  test("Google Gemini models get thinkingLevel minimal (not thinkingBudget 0)", () => {
+    const model = createMockModel({
+      providerID: "google",
+      api: {
+        id: "gemini-3-flash",
+        url: "https://generativelanguage.googleapis.com",
+        npm: "@ai-sdk/google",
+      },
+    })
+    const result = ProviderTransform.smallOptions(model)
+    expect(result).toEqual({ thinkingConfig: { thinkingLevel: "minimal" } })
+  })
+
+  test("OpenRouter Google models get reasoning disabled", () => {
+    const model = createMockModel({
+      providerID: "openrouter",
+      api: {
+        id: "google/gemini-3-pro",
+        url: "https://openrouter.ai",
+        npm: "@openrouter/ai-sdk-provider",
+      },
+    })
+    const result = ProviderTransform.smallOptions(model)
+    expect(result).toEqual({ reasoning: { enabled: false } })
+  })
+
+  test("OpenRouter non-Google models get reasoningEffort minimal", () => {
+    const model = createMockModel({
+      providerID: "openrouter",
+      api: {
+        id: "openai/gpt-4",
+        url: "https://openrouter.ai",
+        npm: "@openrouter/ai-sdk-provider",
+      },
+    })
+    const result = ProviderTransform.smallOptions(model)
+    expect(result).toEqual({ reasoningEffort: "minimal" })
+  })
+
+  test("Other providers return empty object", () => {
+    const model = createMockModel({
+      providerID: "anthropic",
+      api: {
+        id: "claude-3-5-sonnet",
+        url: "https://api.anthropic.com",
+        npm: "@ai-sdk/anthropic",
+      },
+    })
+    const result = ProviderTransform.smallOptions(model)
+    expect(result).toEqual({})
+  })
+})
