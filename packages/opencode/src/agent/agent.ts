@@ -4,6 +4,7 @@ import { Provider } from "../provider/provider"
 import { generateObject, streamObject, type ModelMessage } from "ai"
 import { SystemPrompt } from "../session/system"
 import { Instance } from "../project/instance"
+import { State } from "../project/state"
 import { Truncate } from "../tool/truncation"
 import { Auth } from "../auth"
 import { ProviderTransform } from "../provider/transform"
@@ -335,5 +336,9 @@ export namespace Agent {
 
     const result = await generateObject(params)
     return result.object
+  }
+
+  export async function invalidate() {
+    await State.invalidate(Instance.directory, state)
   }
 }

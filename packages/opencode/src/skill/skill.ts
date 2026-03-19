@@ -3,7 +3,9 @@ import path from "path"
 import os from "os"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
+import { State } from "../project/state"
 import { NamedError } from "@opencode-ai/util/error"
+import { BusEvent } from "@/bus/bus-event"
 import { ConfigMarkdown } from "../config/markdown"
 import { Log } from "../util/log"
 import { Global } from "@/global"
@@ -23,6 +25,15 @@ export namespace Skill {
     content: z.string(),
   })
   export type Info = z.infer<typeof Info>
+
+  export const Event = {
+    Reloaded: BusEvent.define(
+      "server.skills.reloaded",
+      z.object({
+        names: z.array(z.string()),
+      }),
+    ),
+  }
 
   export const InvalidError = NamedError.create(
     "SkillInvalidError",
@@ -185,5 +196,19 @@ export namespace Skill {
 
   export async function dirs() {
     return state().then((x) => x.dirs)
+  }
+
+  export async function reload() {
+    const [{ Agent }, { Command }, names] = await Promise.all([
+      import("@/agent/agent"),
+      import("@/command"),
+      all().then((skills) => skills.map((skill) => skill.name).sort()),
+    ])
+    await Promise.all([
+      State.invalidate(Instance.directory, state),
+      Command.invalidate(),
+      Agent.invalidate(),
+    ])
+    await Bus.publish(Event.Reloaded, { names })
   }
 }

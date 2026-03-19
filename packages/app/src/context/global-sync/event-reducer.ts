@@ -87,7 +87,8 @@ export function applyDirectoryEvent(input: {
 }) {
   const event = input.event
   switch (event.type) {
-    case "server.instance.disposed": {
+    case "server.instance.disposed":
+    case "server.skills.reloaded": {
       input.push(input.directory)
       return
     }

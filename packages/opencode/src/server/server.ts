@@ -438,13 +438,35 @@ export namespace Server {
               },
             },
           }),
-          async (c) => {
-            const skills = await Skill.all()
-            return c.json(skills)
+        async (c) => {
+          const skills = await Skill.all()
+          return c.json(skills)
+        },
+      )
+      .post(
+        "/skill/reload",
+        describeRoute({
+          summary: "Reload skills",
+          description: "Reload skill definitions without disposing the current instance.",
+          operationId: "app.skills.reload",
+          responses: {
+            200: {
+              description: "Skills reloaded",
+              content: {
+                "application/json": {
+                  schema: resolver(z.boolean()),
+                },
+              },
+            },
           },
-        )
-        .get(
-          "/lsp",
+        }),
+        async (c) => {
+          await Skill.reload()
+          return c.json(true)
+        },
+      )
+      .get(
+        "/lsp",
           describeRoute({
             summary: "Get LSP status",
             description: "Get LSP server status",

@@ -4,34 +4,34 @@ export namespace State {
   interface Entry {
     state: any
     dispose?: (state: any) => Promise<void>
+    label: string
   }
 
   const log = Log.create({ service: "state" })
   const recordsByKey = new Map<string, Map<any, Entry>>()
 
   export function create<S>(root: () => string, init: () => S, dispose?: (state: Awaited<S>) => Promise<void>) {
-    return () => {
+    const key = function stateGetter() {
       const key = root()
       let entries = recordsByKey.get(key)
       if (!entries) {
         entries = new Map<string, Entry>()
         recordsByKey.set(key, entries)
       }
-      const exists = entries.get(init)
+      const exists = entries.get(stateGetter)
       if (exists) return exists.state as S
       const state = init()
-      entries.set(init, {
+      entries.set(stateGetter, {
         state,
         dispose,
+        label: init.name,
       })
       return state
     }
+    return key
   }
 
-  export async function dispose(key: string) {
-    const entries = recordsByKey.get(key)
-    if (!entries) return
-
+  async function disposeEntries(key: string, entries: Map<any, Entry>, targets?: Iterable<any>) {
     log.info("waiting for state disposal to complete", { key })
 
     let disposalFinished = false
@@ -46,25 +46,43 @@ export namespace State {
     }, 10000).unref()
 
     const tasks: Promise<void>[] = []
-    for (const [init, entry] of entries) {
-      if (!entry.dispose) continue
+    for (const target of targets ?? entries.keys()) {
+      const entry = entries.get(target)
+      if (!entry) continue
 
-      const label = typeof init === "function" ? init.name : String(init)
+      if (entry.dispose) {
+        const task = Promise.resolve(entry.state)
+          .then((state) => entry.dispose!(state))
+          .catch((error) => {
+            log.error("Error while disposing state:", { error, key, init: entry.label || String(target) })
+          })
 
-      const task = Promise.resolve(entry.state)
-        .then((state) => entry.dispose!(state))
-        .catch((error) => {
-          log.error("Error while disposing state:", { error, key, init: label })
-        })
+        tasks.push(task)
+      }
 
-      tasks.push(task)
+      entries.delete(target)
     }
+
     await Promise.all(tasks)
 
-    entries.clear()
-    recordsByKey.delete(key)
+    if (entries.size === 0) {
+      entries.clear()
+      recordsByKey.delete(key)
+    }
 
     disposalFinished = true
     log.info("state disposal completed", { key })
+  }
+
+  export async function invalidate(key: string, init: any) {
+    const entries = recordsByKey.get(key)
+    if (!entries?.has(init)) return
+    await disposeEntries(key, entries, [init])
+  }
+
+  export async function dispose(key: string) {
+    const entries = recordsByKey.get(key)
+    if (!entries) return
+    await disposeEntries(key, entries)
   }
 }

@@ -2,6 +2,7 @@ import { BusEvent } from "@/bus/bus-event"
 import z from "zod"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
+import { State } from "../project/state"
 import { Identifier } from "../id/id"
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 import PROMPT_REVIEW from "./template/review.txt"
@@ -146,5 +147,9 @@ export namespace Command {
 
   export async function list() {
     return state().then((x) => Object.values(x))
+  }
+
+  export async function invalidate() {
+    await State.invalidate(Instance.directory, state)
   }
 }
