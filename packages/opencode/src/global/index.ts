@@ -3,13 +3,14 @@ import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
 import path from "path"
 import os from "os"
 import { Filesystem } from "../util/filesystem"
+import { Flag } from "../flag/flag"
 
 const app = "opencode"
 
-const data = path.join(xdgData!, app)
-const cache = path.join(xdgCache!, app)
-const config = path.join(xdgConfig!, app)
-const state = path.join(xdgState!, app)
+const data = path.join(Flag.OPENCODE_XDG_DATA_HOME || xdgData!, app)
+const cache = path.join(Flag.OPENCODE_XDG_CACHE_HOME || xdgCache!, app)
+const config = path.join(Flag.OPENCODE_XDG_CONFIG_HOME || xdgConfig!, app)
+const state = path.join(Flag.OPENCODE_XDG_STATE_HOME || xdgState!, app)
 
 export namespace Global {
   export const Path = {

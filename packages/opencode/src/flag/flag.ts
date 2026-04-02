@@ -24,6 +24,10 @@ export namespace Flag {
   export declare const OPENCODE_PLUGIN_META_FILE: string | undefined
   export declare const OPENCODE_PROJECT_ID: string | undefined
   export declare const OPENCODE_DISABLE_GLOBAL_CONFIG: boolean
+  export declare const OPENCODE_XDG_DATA_HOME: string | undefined
+  export declare const OPENCODE_XDG_CONFIG_HOME: string | undefined
+  export declare const OPENCODE_XDG_CACHE_HOME: string | undefined
+  export declare const OPENCODE_XDG_STATE_HOME: string | undefined
   export const OPENCODE_CONFIG_CONTENT = process.env["OPENCODE_CONFIG_CONTENT"]
   export const OPENCODE_DISABLE_AUTOUPDATE = truthy("OPENCODE_DISABLE_AUTOUPDATE")
   export const OPENCODE_ALWAYS_NOTIFY_UPDATE = truthy("OPENCODE_ALWAYS_NOTIFY_UPDATE")
@@ -138,6 +142,38 @@ Object.defineProperty(Flag, "OPENCODE_CONFIG_DIR", {
 Object.defineProperty(Flag, "OPENCODE_PROJECT_ID", {
   get() {
     return process.env["OPENCODE_PROJECT_ID"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "OPENCODE_XDG_DATA_HOME", {
+  get() {
+    return process.env["OPENCODE_XDG_DATA_HOME"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "OPENCODE_XDG_CONFIG_HOME", {
+  get() {
+    return process.env["OPENCODE_XDG_CONFIG_HOME"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "OPENCODE_XDG_CACHE_HOME", {
+  get() {
+    return process.env["OPENCODE_XDG_CACHE_HOME"]
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "OPENCODE_XDG_STATE_HOME", {
+  get() {
+    return process.env["OPENCODE_XDG_STATE_HOME"]
   },
   enumerable: true,
   configurable: false,
