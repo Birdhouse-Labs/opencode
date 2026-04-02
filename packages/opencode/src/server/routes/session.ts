@@ -357,6 +357,37 @@ export const SessionRoutes = lazy(() =>
       },
     )
     .post(
+      "/:sessionID/wait",
+      describeRoute({
+        summary: "Wait for session completion",
+        description: "Block until the session reaches its final assistant message.",
+        operationId: "session.wait",
+        responses: {
+          200: {
+            description: "Completed assistant message",
+            content: {
+              "application/json": {
+                schema: resolver(MessageV2.WithParts),
+              },
+            },
+          },
+          ...errors(400, 404),
+        },
+      }),
+      validator(
+        "param",
+        z.object({
+          sessionID: Session.get.schema,
+        }),
+      ),
+      async (c) => {
+        const sessionID = c.req.valid("param").sessionID
+        await Session.get(sessionID)
+        const result = await SessionPrompt.loop({ sessionID })
+        return c.json(result)
+      },
+    )
+    .post(
       "/:sessionID/abort",
       describeRoute({
         summary: "Abort session",
