@@ -68,11 +68,12 @@ export namespace Command {
   export interface Interface {
     readonly get: (name: string) => Effect.Effect<Info | undefined>
     readonly list: () => Effect.Effect<Info[]>
+    readonly invalidate: () => Effect.Effect<void>
   }
 
   export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/Command") {}
 
-  export const layer = Layer.effect(
+  export const layer: Layer.Layer<Service, never, Config.Service | MCP.Service | Skill.Service> = Layer.effect(
     Service,
     Effect.gen(function* () {
       const config = yield* Config.Service
@@ -177,11 +178,15 @@ export namespace Command {
         return Object.values(s.commands)
       })
 
-      return Service.of({ get, list })
+      const invalidateState = Effect.fn("Command.invalidate")(function* () {
+        yield* InstanceState.invalidate(state)
+      })
+
+      return Service.of({ get, list, invalidate: invalidateState })
     }),
   )
 
-  export const defaultLayer = layer.pipe(
+  export const defaultLayer: Layer.Layer<Service> = layer.pipe(
     Layer.provide(Config.defaultLayer),
     Layer.provide(MCP.defaultLayer),
     Layer.provide(Skill.defaultLayer),
@@ -189,7 +194,15 @@ export namespace Command {
 
   const { runPromise } = makeRuntime(Service, defaultLayer)
 
+  export async function get(name: string) {
+    return runPromise((svc) => svc.get(name))
+  }
+
   export async function list() {
     return runPromise((svc) => svc.list())
+  }
+
+  export async function invalidate(): Promise<void> {
+    return runPromise((svc) => svc.invalidate())
   }
 }

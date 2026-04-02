@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 
 import { Instance } from "../../src/project/instance"
+import { State } from "../../src/project/state"
 import { tmpdir } from "../fixture/fixture"
 
 afterEach(async () => {
@@ -45,6 +46,47 @@ test("Instance.state isolates values by directory", async () => {
   expect(x).toBe(z)
   expect(x).not.toBe(y)
   expect(n).toBe(2)
+})
+
+test("Instance.state can invalidate a single cached entry", async () => {
+  await using tmp = await tmpdir()
+  const seen: string[] = []
+  let firstCount = 0
+  let secondCount = 0
+  const first = Instance.state(
+    () => ({ n: ++firstCount }),
+    async (value) => {
+      seen.push(`first:${value.n}`)
+    },
+  )
+  const second = Instance.state(
+    () => ({ n: ++secondCount }),
+    async (value) => {
+      seen.push(`second:${value.n}`)
+    },
+  )
+
+  const before = await Instance.provide({
+    directory: tmp.path,
+    fn: async () => ({
+      first: first(),
+      second: second(),
+    }),
+  })
+
+  await State.invalidate(tmp.path, first)
+
+  const after = await Instance.provide({
+    directory: tmp.path,
+    fn: async () => ({
+      first: first(),
+      second: second(),
+    }),
+  })
+
+  expect(after.first).not.toBe(before.first)
+  expect(after.second).toBe(before.second)
+  expect(seen).toEqual(["first:1"])
 })
 
 test("Instance.state is disposed on instance reload", async () => {

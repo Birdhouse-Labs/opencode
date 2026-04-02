@@ -55,6 +55,7 @@ export namespace Agent {
     readonly get: (agent: string) => Effect.Effect<Agent.Info>
     readonly list: () => Effect.Effect<Agent.Info[]>
     readonly defaultAgent: () => Effect.Effect<string>
+    readonly invalidate: () => Effect.Effect<void>
     readonly generate: (input: {
       description: string
       model?: { providerID: ProviderID; modelID: ModelID }
@@ -65,11 +66,11 @@ export namespace Agent {
     }>
   }
 
-  type State = Omit<Interface, "generate">
+  type State = Pick<Interface, "get" | "list" | "defaultAgent">
 
   export class Service extends ServiceMap.Service<Service, Interface>()("@opencode/Agent") {}
 
-  export const layer = Layer.effect(
+  export const layer: Layer.Layer<Service, never, Config.Service | Auth.Service | Skill.Service | Provider.Service> = Layer.effect(
     Service,
     Effect.gen(function* () {
       const config = yield* Config.Service
@@ -326,6 +327,9 @@ export namespace Agent {
         defaultAgent: Effect.fn("Agent.defaultAgent")(function* () {
           return yield* InstanceState.useEffect(state, (s) => s.defaultAgent())
         }),
+        invalidate: Effect.fn("Agent.invalidate")(function* () {
+          yield* InstanceState.invalidate(state)
+        }),
         generate: Effect.fn("Agent.generate")(function* (input: {
           description: string
           model?: { providerID: ProviderID; modelID: ModelID }
@@ -393,7 +397,7 @@ export namespace Agent {
     }),
   )
 
-  export const defaultLayer = layer.pipe(
+  export const defaultLayer: Layer.Layer<Service> = layer.pipe(
     Layer.provide(Provider.defaultLayer),
     Layer.provide(Auth.defaultLayer),
     Layer.provide(Config.defaultLayer),
@@ -416,5 +420,9 @@ export namespace Agent {
 
   export async function generate(input: { description: string; model?: { providerID: ProviderID; modelID: ModelID } }) {
     return runPromise((svc) => svc.generate(input))
+  }
+
+  export async function invalidate() {
+    return runPromise((svc) => svc.invalidate())
   }
 }
