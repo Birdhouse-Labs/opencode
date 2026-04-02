@@ -2,6 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import fs from "fs/promises"
 import { tmpdir } from "../fixture/fixture"
+import { Agent } from "../../src/agent/agent"
+import { Permission } from "../../src/permission"
 import { Instance } from "../../src/project/instance"
 import { ToolRegistry } from "../../src/tool/registry"
 
@@ -10,6 +12,64 @@ afterEach(async () => {
 })
 
 describe("tool.registry", () => {
+  test("keeps task registered by default", async () => {
+    const previousConfigContent = process.env.OPENCODE_CONFIG_CONTENT
+    const previousPermission = process.env.OPENCODE_PERMISSION
+    delete process.env.OPENCODE_CONFIG_CONTENT
+    delete process.env.OPENCODE_PERMISSION
+
+    await using tmp = await tmpdir({ git: true })
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const ids = await ToolRegistry.ids()
+          expect(ids).toContain("task")
+        },
+      })
+    } finally {
+      if (previousConfigContent === undefined) delete process.env.OPENCODE_CONFIG_CONTENT
+      else process.env.OPENCODE_CONFIG_CONTENT = previousConfigContent
+      if (previousPermission === undefined) delete process.env.OPENCODE_PERMISSION
+      else process.env.OPENCODE_PERMISSION = previousPermission
+    }
+  })
+
+  test("marks task disabled for agents when config disables it", async () => {
+    const previousConfigContent = process.env.OPENCODE_CONFIG_CONTENT
+    const previousPermission = process.env.OPENCODE_PERMISSION
+    delete process.env.OPENCODE_CONFIG_CONTENT
+    delete process.env.OPENCODE_PERMISSION
+
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        tools: {
+          task: false,
+        },
+      },
+    })
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const agent = await Agent.get("build")
+          const ids = await ToolRegistry.ids()
+          const disabled = Permission.disabled(ids, agent.permission)
+
+          expect(disabled.has("task")).toBe(true)
+        },
+      })
+    } finally {
+      if (previousConfigContent === undefined) delete process.env.OPENCODE_CONFIG_CONTENT
+      else process.env.OPENCODE_CONFIG_CONTENT = previousConfigContent
+      if (previousPermission === undefined) delete process.env.OPENCODE_PERMISSION
+      else process.env.OPENCODE_PERMISSION = previousPermission
+    }
+  })
+
   test("loads tools from .opencode/tool (singular)", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
