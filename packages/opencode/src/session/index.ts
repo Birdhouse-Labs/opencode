@@ -519,9 +519,14 @@ export namespace Session {
         })
         const msgs = yield* messages({ sessionID: input.sessionID })
         const idMap = new Map<string, MessageID>()
+        const target = input.messageID ? msgs.find((msg) => msg.info.id === input.messageID) : undefined
+        const includeTarget = target?.info.role === "assistant"
 
         for (const msg of msgs) {
-          if (input.messageID && msg.info.id >= input.messageID) break
+          if (input.messageID) {
+            const shouldBreak = includeTarget ? msg.info.id > input.messageID : msg.info.id >= input.messageID
+            if (shouldBreak) break
+          }
           const newID = MessageID.ascending()
           idMap.set(msg.info.id, newID)
 
