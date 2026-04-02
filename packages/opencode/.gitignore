@@ -4,3 +4,6 @@ gen
 app.log
 src/provider/models-snapshot.js
 src/provider/models-snapshot.d.ts
+
+# Birdhouse plugin (copied during build, not version controlled)
+src/plugin/birdhouse.ts
