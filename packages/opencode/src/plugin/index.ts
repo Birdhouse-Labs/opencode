@@ -18,6 +18,16 @@ import { errorMessage } from "@/util/error"
 import { PluginLoader } from "./loader"
 import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } from "./shared"
 
+const BUILTIN_LOCAL_LOADERS: Record<string, () => Promise<Record<string, unknown>>> = {
+  birdhouse: () => import("./birdhouse"),
+}
+
+export async function loadBuiltinLocalPlugin(spec: string) {
+  const loader = BUILTIN_LOCAL_LOADERS[spec]
+  if (!loader) return
+  return loader().catch(() => undefined)
+}
+
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
 
@@ -55,6 +65,7 @@ export namespace Plugin {
     CloudflareWorkersAuthPlugin,
     CloudflareAIGatewayAuthPlugin,
   ]
+  const BUILTIN_LOCAL = ["birdhouse"]
 
   function isServerPlugin(value: unknown): value is PluginInstance {
     return typeof value === "function"
@@ -151,9 +162,30 @@ export namespace Plugin {
           }
           if (plugins.length) yield* config.waitForDependencies()
 
-          const loaded = yield* Effect.promise(() =>
-            PluginLoader.loadExternal({
-              items: plugins,
+          const builtinLocal = plugins.filter((item) => BUILTIN_LOCAL.includes(Config.pluginSpecifier(item.spec)))
+          const externalPlugins = plugins.filter((item) => !BUILTIN_LOCAL.includes(Config.pluginSpecifier(item.spec)))
+
+          const loaded = yield* Effect.promise(async () => {
+            const builtinLoaded: PluginLoader.Loaded[] = []
+            for (const item of builtinLocal) {
+              const spec = Config.pluginSpecifier(item.spec)
+              const options = Config.pluginOptions(item.spec)
+              log.info("loading builtin local plugin", { path: item })
+              const mod = await loadBuiltinLocalPlugin(spec)
+              if (!mod) continue
+              builtinLoaded.push({
+                spec,
+                options,
+                deprecated: false,
+                mod,
+                source: "file",
+                target: spec,
+                entry: spec,
+              })
+            }
+
+            const externalLoaded = await PluginLoader.loadExternal({
+              items: externalPlugins,
               kind: "server",
               report: {
                 start(candidate) {
@@ -190,8 +222,10 @@ export namespace Plugin {
                   publishPluginError(bus, `Failed to load plugin ${spec}: ${message}`)
                 },
               },
-            }),
-          )
+            })
+
+            return [...builtinLoaded.filter((load) => load !== undefined), ...externalLoaded]
+          })
           for (const load of loaded) {
             if (!load) continue
 
