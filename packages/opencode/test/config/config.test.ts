@@ -112,6 +112,39 @@ test("loads JSON config file", async () => {
   })
 })
 
+test("ignores global config when OPENCODE_DISABLE_GLOBAL_CONFIG is set", async () => {
+  await using globalTmp = await tmpdir()
+  await using tmp = await tmpdir({ git: true })
+  const previousConfig = Global.Path.config
+  const previousFlag = process.env.OPENCODE_DISABLE_GLOBAL_CONFIG
+  ;(Global.Path as { config: string }).config = globalTmp.path
+  process.env.OPENCODE_DISABLE_GLOBAL_CONFIG = "1"
+  await Config.invalidate()
+
+  try {
+    await writeConfig(globalTmp.path, {
+      $schema: "https://opencode.ai/config.json",
+      model: "global/model",
+      username: "global-user",
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const config = await Config.get()
+        expect(config.model).toBeUndefined()
+        expect(config.username).not.toBe("global-user")
+      },
+    })
+  } finally {
+    await Instance.disposeAll()
+    if (previousFlag === undefined) delete process.env.OPENCODE_DISABLE_GLOBAL_CONFIG
+    else process.env.OPENCODE_DISABLE_GLOBAL_CONFIG = previousFlag
+    ;(Global.Path as { config: string }).config = previousConfig
+    await Config.invalidate()
+  }
+})
+
 test("loads project config from Git Bash and MSYS2 paths on Windows", async () => {
   // Git Bash and MSYS2 both use /<drive>/... paths on Windows.
   await check((dir) => {

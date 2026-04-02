@@ -1346,30 +1346,32 @@ export namespace Config {
             track(source, next.plugin, kind)
           }
 
-          for (const [key, value] of Object.entries(auth)) {
-            if (value.type === "wellknown") {
-              const url = key.replace(/\/+$/, "")
-              process.env[value.key] = value.token
-              log.debug("fetching remote config", { url: `${url}/.well-known/opencode` })
-              const response = yield* Effect.promise(() => fetch(`${url}/.well-known/opencode`))
-              if (!response.ok) {
-                throw new Error(`failed to fetch remote config from ${url}: ${response.status}`)
+          if (!Flag.OPENCODE_DISABLE_GLOBAL_CONFIG) {
+            for (const [key, value] of Object.entries(auth)) {
+              if (value.type === "wellknown") {
+                const url = key.replace(/\/+$/, "")
+                process.env[value.key] = value.token
+                log.debug("fetching remote config", { url: `${url}/.well-known/opencode` })
+                const response = yield* Effect.promise(() => fetch(`${url}/.well-known/opencode`))
+                if (!response.ok) {
+                  throw new Error(`failed to fetch remote config from ${url}: ${response.status}`)
+                }
+                const wellknown = (yield* Effect.promise(() => response.json())) as any
+                const remoteConfig = wellknown.config ?? {}
+                if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
+                const source = `${url}/.well-known/opencode`
+                const next = yield* loadConfig(JSON.stringify(remoteConfig), {
+                  dir: path.dirname(source),
+                  source,
+                })
+                merge(source, next, "global")
+                log.debug("loaded remote config from well-known", { url })
               }
-              const wellknown = (yield* Effect.promise(() => response.json())) as any
-              const remoteConfig = wellknown.config ?? {}
-              if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
-              const source = `${url}/.well-known/opencode`
-              const next = yield* loadConfig(JSON.stringify(remoteConfig), {
-                dir: path.dirname(source),
-                source,
-              })
-              merge(source, next, "global")
-              log.debug("loaded remote config from well-known", { url })
             }
-          }
 
-          const global = yield* getGlobal()
-          merge(Global.Path.config, global, "global")
+            const global = yield* getGlobal()
+            merge(Global.Path.config, global, "global")
+          }
 
           if (Flag.OPENCODE_CONFIG) {
             merge(Flag.OPENCODE_CONFIG, yield* loadFile(Flag.OPENCODE_CONFIG))

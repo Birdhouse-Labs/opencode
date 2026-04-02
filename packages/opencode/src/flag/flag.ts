@@ -23,6 +23,7 @@ export namespace Flag {
   export declare const OPENCODE_CONFIG_DIR: string | undefined
   export declare const OPENCODE_PLUGIN_META_FILE: string | undefined
   export declare const OPENCODE_PROJECT_ID: string | undefined
+  export declare const OPENCODE_DISABLE_GLOBAL_CONFIG: boolean
   export const OPENCODE_CONFIG_CONTENT = process.env["OPENCODE_CONFIG_CONTENT"]
   export const OPENCODE_DISABLE_AUTOUPDATE = truthy("OPENCODE_DISABLE_AUTOUPDATE")
   export const OPENCODE_ALWAYS_NOTIFY_UPDATE = truthy("OPENCODE_ALWAYS_NOTIFY_UPDATE")
@@ -99,6 +100,14 @@ export namespace Flag {
 Object.defineProperty(Flag, "OPENCODE_DISABLE_PROJECT_CONFIG", {
   get() {
     return truthy("OPENCODE_DISABLE_PROJECT_CONFIG")
+  },
+  enumerable: true,
+  configurable: false,
+})
+
+Object.defineProperty(Flag, "OPENCODE_DISABLE_GLOBAL_CONFIG", {
+  get() {
+    return truthy("OPENCODE_DISABLE_GLOBAL_CONFIG")
   },
   enumerable: true,
   configurable: false,
