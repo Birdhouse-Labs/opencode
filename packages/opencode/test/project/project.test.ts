@@ -59,6 +59,24 @@ function projectLayerWithFailure(failArg: string) {
 }
 
 describe("Project.fromDirectory", () => {
+  test("uses OPENCODE_PROJECT_ID when provided", async () => {
+    await using tmp = await tmpdir({ git: true })
+    const previous = process.env.OPENCODE_PROJECT_ID
+    process.env.OPENCODE_PROJECT_ID = "project-forced"
+
+    try {
+      const { project, sandbox } = await Project.fromDirectory(tmp.path)
+
+      expect(project.id).toBe(ProjectID.make("project-forced"))
+      expect(project.vcs).toBe("git")
+      expect(project.worktree).toBe(tmp.path)
+      expect(sandbox).toBe(tmp.path)
+    } finally {
+      if (previous === undefined) delete process.env.OPENCODE_PROJECT_ID
+      else process.env.OPENCODE_PROJECT_ID = previous
+    }
+  })
+
   test("should handle git repository with no commits", async () => {
     await using tmp = await tmpdir()
     await $`git init`.cwd(tmp.path).quiet()
