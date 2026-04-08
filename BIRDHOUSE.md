@@ -13,16 +13,25 @@ When upstream cuts a new release we rebase our commits onto the new tag, fix any
 From the repo root:
 
 ```bash
-bun turbo typecheck
-bun turbo test
+./script/test-clean-env.sh typecheck
+./script/test-clean-env.sh test
 ```
 
-Both commands use Turborepo, which builds dependencies (including the SDK) before running. **Do not run `bun run typecheck` or `bun test` directly inside `packages/opencode`** - the SDK `dist/` will be stale and typecheck will fail with spurious errors.
+Run these as separate commands. Do not chain them together in one shell line when collecting logs for debugging or LLM review. Keeping typecheck and test output separate makes failures much easier to inspect.
+
+To run just one phase explicitly:
+
+```bash
+./script/test-clean-env.sh typecheck
+./script/test-clean-env.sh test
+```
+
+The script runs Turborepo with a scrubbed HOME/XDG environment, uses the repo-local turbo binary, and checks for the ignored Birdhouse plugin source before typecheck. **Do not run `bun run typecheck` or `bun test` directly inside `packages/opencode`** - the SDK `dist/` will be stale and typecheck will fail with spurious errors.
 
 If typecheck fails after a cache clear, force a rebuild:
 
 ```bash
-bun turbo typecheck --force
+./node_modules/.bin/turbo typecheck --force
 ```
 
 ## Fixup strategy
