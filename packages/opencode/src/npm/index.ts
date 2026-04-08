@@ -8,6 +8,7 @@ import { readdir, rm } from "fs/promises"
 import { Filesystem } from "@/util/filesystem"
 import { Flock } from "@/util/flock"
 import { Arborist } from "@npmcli/arborist"
+import npa from "npm-package-arg"
 
 export namespace Npm {
   const log = Log.create({ service: "npm" })
@@ -41,6 +42,14 @@ export namespace Npm {
     return result
   }
 
+  function packageName(spec: string) {
+    try {
+      return npa(spec).name ?? spec
+    } catch {
+      return spec
+    }
+  }
+
   export async function outdated(pkg: string, cachedVersion: string): Promise<boolean> {
     const response = await fetch(`https://registry.npmjs.org/${pkg}`)
     if (!response.ok) {
@@ -63,6 +72,7 @@ export namespace Npm {
 
   export async function add(pkg: string) {
     const dir = directory(pkg)
+    const name = packageName(pkg)
     await using _ = await Flock.acquire(`npm-install:${Filesystem.resolve(dir)}`)
     log.info("installing package", {
       pkg,
@@ -80,6 +90,11 @@ export namespace Npm {
       const first = tree.edgesOut.values().next().value?.to
       if (first) {
         return resolveEntryPoint(first.name, first.path)
+      }
+
+      const installed = path.join(dir, "node_modules", name)
+      if (await Filesystem.exists(installed)) {
+        return resolveEntryPoint(name, installed)
       }
     }
 
@@ -99,8 +114,14 @@ export namespace Npm {
       })
 
     const first = result.edgesOut.values().next().value?.to
-    if (!first) throw new InstallFailedError({ pkg })
-    return resolveEntryPoint(first.name, first.path)
+    if (first) return resolveEntryPoint(first.name, first.path)
+
+    const installed = path.join(dir, "node_modules", name)
+    if (await Filesystem.exists(installed)) {
+      return resolveEntryPoint(name, installed)
+    }
+
+    throw new InstallFailedError({ pkg })
   }
 
   export async function install(dir: string) {
