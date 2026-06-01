@@ -3563,6 +3563,43 @@ export type SessionForkResponses = {
 
 export type SessionForkResponse = SessionForkResponses[keyof SessionForkResponses]
 
+export type SessionWaitData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/wait"
+}
+
+export type SessionWaitErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionWaitError = SessionWaitErrors[keyof SessionWaitErrors]
+
+export type SessionWaitResponses = {
+  /**
+   * Completed assistant message
+   */
+  200: {
+    info: Message
+    parts: Array<Part>
+  }
+}
+
+export type SessionWaitResponse = SessionWaitResponses[keyof SessionWaitResponses]
+
 export type SessionAbortData = {
   body?: never
   path: {
