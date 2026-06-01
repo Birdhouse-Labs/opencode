@@ -107,4 +107,7 @@ export const Flag = {
   get OPENCODE_PROJECT_ID() {
     return process.env["OPENCODE_PROJECT_ID"]
   },
+  get OPENCODE_DISABLE_GLOBAL_CONFIG() {
+    return truthy("OPENCODE_DISABLE_GLOBAL_CONFIG")
+  },
 }
