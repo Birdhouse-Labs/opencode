@@ -4639,6 +4639,72 @@ export type SyncHistoryListResponses = {
 
 export type SyncHistoryListResponse = SyncHistoryListResponses[keyof SyncHistoryListResponses]
 
+export type LlmGenerateData = {
+  body?: {
+    /**
+     * Base system prompt used when no agent is provided
+     */
+    prompt?: string
+    /**
+     * Additional system instructions for this call
+     */
+    system?: Array<string>
+    /**
+     * User message
+     */
+    message: string
+    /**
+     * Existing agent to use for the call
+     */
+    agent?: string
+    /**
+     * Specific model to use
+     */
+    model?: {
+      providerID: string
+      modelID: string
+    }
+    /**
+     * Use the provider's small model when available
+     */
+    small?: boolean
+    /**
+     * Maximum output tokens
+     */
+    maxTokens?: number
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/llm/generate"
+}
+
+export type LlmGenerateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type LlmGenerateError = LlmGenerateErrors[keyof LlmGenerateErrors]
+
+export type LlmGenerateResponses = {
+  /**
+   * Generated text response
+   */
+  200: {
+    text: string
+    usage?: {
+      inputTokens: number
+      outputTokens: number
+    }
+  }
+}
+
+export type LlmGenerateResponse = LlmGenerateResponses[keyof LlmGenerateResponses]
+
 export type FindTextData = {
   body?: never
   path?: never

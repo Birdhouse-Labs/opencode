@@ -56,6 +56,8 @@ import type {
   GlobalUpgradeErrors,
   GlobalUpgradeResponses,
   InstanceDisposeResponses,
+  LlmGenerateErrors,
+  LlmGenerateResponses,
   LspStatusResponses,
   McpAddErrors,
   McpAddResponses,
@@ -3178,6 +3180,60 @@ export class Sync extends HeyApiClient {
   }
 }
 
+export class Llm extends HeyApiClient {
+  /**
+   * Generate LLM response
+   *
+   * Generate a one-off LLM response without creating a session or storing messages.
+   */
+  public generate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      prompt?: string
+      system?: Array<string>
+      message?: string
+      agent?: string
+      model?: {
+        providerID: string
+        modelID: string
+      }
+      small?: boolean
+      maxTokens?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "prompt" },
+            { in: "body", key: "system" },
+            { in: "body", key: "message" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "model" },
+            { in: "body", key: "small" },
+            { in: "body", key: "maxTokens" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<LlmGenerateResponses, LlmGenerateErrors, ThrowOnError>({
+      url: "/llm/generate",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Find extends HeyApiClient {
   /**
    * Find text
@@ -4437,6 +4493,11 @@ export class OpencodeClient extends HeyApiClient {
   private _sync?: Sync
   get sync(): Sync {
     return (this._sync ??= new Sync({ client: this.client }))
+  }
+
+  private _llm?: Llm
+  get llm(): Llm {
+    return (this._llm ??= new Llm({ client: this.client }))
   }
 
   private _find?: Find
