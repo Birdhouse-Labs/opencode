@@ -83,14 +83,24 @@ export const GlobalRoutes = lazy(() =>
             description: "Health information",
             content: {
               "application/json": {
-                schema: resolver(z.object({ healthy: z.literal(true), version: z.string() })),
+                schema: resolver(
+                  z.object({
+                    healthy: z.literal(true),
+                    version: z.string(),
+                    birdhouseWorkspaceId: z.string().nullable(),
+                  }),
+                ),
               },
             },
           },
         },
       }),
       async (c) => {
-        return c.json({ healthy: true, version: InstallationVersion })
+        return c.json({
+          healthy: true,
+          version: InstallationVersion,
+          birdhouseWorkspaceId: process.env.BIRDHOUSE_WORKSPACE_ID ?? null,
+        })
       },
     )
     .get(

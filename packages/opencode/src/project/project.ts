@@ -169,6 +169,8 @@ export const layer: Layer.Layer<
     const fromDirectory = Effect.fn("Project.fromDirectory")(function* (directory: string) {
       log.info("fromDirectory", { directory })
 
+      const forcedProjectID = Flag.OPENCODE_PROJECT_ID ? ProjectID.make(Flag.OPENCODE_PROJECT_ID) : undefined
+
       // Phase 1: discover git info
       type DiscoveryResult = { id: ProjectID; worktree: string; sandbox: string; vcs: Info["vcs"] }
 
@@ -178,9 +180,9 @@ export const layer: Layer.Layer<
 
         if (!dotgit) {
           return {
-            id: ProjectID.global,
-            worktree: "/",
-            sandbox: "/",
+            id: forcedProjectID ?? ProjectID.global,
+            worktree: forcedProjectID ? directory : "/",
+            sandbox: forcedProjectID ? directory : "/",
             vcs: fakeVcs,
           }
         }
@@ -188,6 +190,15 @@ export const layer: Layer.Layer<
         let sandbox = pathSvc.dirname(dotgit)
         const gitBinary = yield* Effect.sync(() => which("git"))
         let id = yield* readCachedProjectId(dotgit)
+
+        if (forcedProjectID && !gitBinary) {
+          return {
+            id: forcedProjectID,
+            worktree: sandbox,
+            sandbox,
+            vcs: fakeVcs,
+          }
+        }
 
         if (!gitBinary) {
           return {
@@ -201,7 +212,7 @@ export const layer: Layer.Layer<
         const commonDir = yield* git(["rev-parse", "--git-common-dir"], { cwd: sandbox })
         if (commonDir.code !== 0) {
           return {
-            id: id ?? ProjectID.global,
+            id: forcedProjectID ?? id ?? ProjectID.global,
             worktree: sandbox,
             sandbox,
             vcs: fakeVcs,
@@ -211,6 +222,19 @@ export const layer: Layer.Layer<
           const common = resolveGitPath(sandbox, commonDir.text.trim())
           return common === sandbox ? sandbox : pathSvc.dirname(common)
         })()
+
+        if (forcedProjectID) {
+          const topLevel = yield* git(["rev-parse", "--show-toplevel"], { cwd: sandbox })
+          if (topLevel.code === 0) {
+            sandbox = resolveGitPath(sandbox, topLevel.text.trim())
+          }
+          return {
+            id: forcedProjectID,
+            worktree,
+            sandbox,
+            vcs: "git" as const,
+          }
+        }
 
         if (id == null) {
           id = yield* readCachedProjectId(pathSvc.join(worktree, ".git"))
