@@ -330,6 +330,13 @@ export type EventTodoUpdated = {
   }
 }
 
+export type EventServerSkillsReloaded = {
+  type: "server.skills.reloaded"
+  properties: {
+    names: Array<string>
+  }
+}
+
 export type SessionStatus =
   | {
       type: "idle"
@@ -1127,6 +1134,7 @@ export type GlobalEvent = {
     | EventQuestionReplied
     | EventQuestionRejected
     | EventTodoUpdated
+    | EventServerSkillsReloaded
     | EventSessionStatus
     | EventSessionIdle
     | EventSessionCompacted
@@ -2046,6 +2054,7 @@ export type Event =
   | EventQuestionReplied
   | EventQuestionRejected
   | EventTodoUpdated
+  | EventServerSkillsReloaded
   | EventSessionStatus
   | EventSessionIdle
   | EventSessionCompacted
@@ -5548,6 +5557,25 @@ export type AppSkillsResponses = {
 }
 
 export type AppSkillsResponse = AppSkillsResponses[keyof AppSkillsResponses]
+
+export type AppSkillsReloadData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/skill/reload"
+}
+
+export type AppSkillsReloadResponses = {
+  /**
+   * Skills reloaded
+   */
+  200: boolean
+}
+
+export type AppSkillsReloadResponse = AppSkillsReloadResponses[keyof AppSkillsReloadResponses]
 
 export type LspStatusData = {
   body?: never

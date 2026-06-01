@@ -6,6 +6,7 @@ import { Effect, Layer, Context } from "effect"
 import { NamedError } from "@opencode-ai/shared/util/error"
 import type { Agent } from "@/agent/agent"
 import { Bus } from "@/bus"
+import { BusEvent } from "@/bus/bus-event"
 import { InstanceState } from "@/effect"
 import { Flag } from "@/flag/flag"
 import { Global } from "@/global"
@@ -64,11 +65,21 @@ type ScanState = {
   dirs: Set<string>
 }
 
+export const Event = {
+  Reloaded: BusEvent.define(
+    "server.skills.reloaded",
+    z.object({
+      names: z.array(z.string()),
+    }),
+  ),
+}
+
 export interface Interface {
   readonly get: (name: string) => Effect.Effect<Info | undefined>
   readonly all: () => Effect.Effect<Info[]>
   readonly dirs: () => Effect.Effect<string[]>
   readonly available: (agent?: Agent.Info) => Effect.Effect<Info[]>
+  readonly reload: () => Effect.Effect<void>
 }
 
 const add = Effect.fnUntraced(function* (state: State, match: string, bus: Bus.Interface) {
@@ -207,7 +218,7 @@ const loadSkills = Effect.fnUntraced(function* (state: State, discovered: Discov
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Skill") {}
 
-export const layer = Layer.effect(
+export const layer: Layer.Layer<Service, never, Discovery.Service | Config.Service | Bus.Service | AppFileSystem.Service> = Layer.effect(
   Service,
   Effect.gen(function* () {
     const discovery = yield* Discovery.Service
@@ -248,11 +259,24 @@ export const layer = Layer.effect(
       return list.filter((skill) => Permission.evaluate("skill", skill.name, agent.permission).action !== "deny")
     })
 
-    return Service.of({ get, all, dirs, available })
+    const reload = Effect.fn("Skill.reload")(function* () {
+      const [{ Agent }, { Command }, names] = yield* Effect.all([
+        Effect.promise(() => import("@/agent/agent")),
+        Effect.promise(() => import("@/command")),
+        all().pipe(Effect.map((skills) => skills.map((skill) => skill.name).sort())),
+      ])
+
+      yield* InstanceState.invalidate(discovered)
+      yield* InstanceState.invalidate(state)
+      yield* Effect.promise(() => Promise.all([Command.invalidate(), Agent.invalidate()]))
+      yield* bus.publish(Event.Reloaded, { names })
+    })
+
+    return Service.of({ get, all, dirs, available, reload })
   }),
 )
 
-export const defaultLayer = layer.pipe(
+export const defaultLayer: Layer.Layer<Service> = layer.pipe(
   Layer.provide(Discovery.defaultLayer),
   Layer.provide(Config.defaultLayer),
   Layer.provide(Bus.layer),
@@ -283,6 +307,11 @@ export function fmt(list: Info[], opts: { verbose: boolean }) {
       .toSorted((a, b) => a.name.localeCompare(b.name))
       .map((skill) => `- **${skill.name}**: ${skill.description}`),
   ].join("\n")
+}
+
+export async function reload(): Promise<void> {
+  const { AppRuntime } = await import("@/effect/app-runtime")
+  return AppRuntime.runPromise(Service.use((svc) => svc.reload()))
 }
 
 export * as Skill from "."

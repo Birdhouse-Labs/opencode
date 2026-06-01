@@ -536,6 +536,19 @@ describe("applyDirectoryEvent", () => {
     })
 
     applyDirectoryEvent({
+      event: { type: "server.skills.reloaded" },
+      store,
+      setStore,
+      push(directory) {
+        pushes.push(directory)
+      },
+      directory: "/tmp",
+      loadLsp() {
+        lspLoads += 1
+      },
+    })
+
+    applyDirectoryEvent({
       event: { type: "lsp.updated" },
       store,
       setStore,
@@ -548,7 +561,7 @@ describe("applyDirectoryEvent", () => {
       },
     })
 
-    expect(pushes).toEqual(["/tmp"])
+    expect(pushes).toEqual(["/tmp", "/tmp"])
     expect(lspLoads).toBe(1)
   })
 })

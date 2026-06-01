@@ -250,6 +250,28 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
           return yield* skill.all()
         }),
     )
+    .post(
+      "/skill/reload",
+      describeRoute({
+        summary: "Reload skills",
+        description: "Reload skill definitions without disposing the current instance.",
+        operationId: "app.skills.reload",
+        responses: {
+          200: {
+            description: "Skills reloaded",
+            content: {
+              "application/json": {
+                schema: resolver(z.boolean()),
+              },
+            },
+          },
+        },
+      }),
+      async (c) => {
+        await Skill.reload()
+        return c.json(true)
+      },
+    )
     .get(
       "/lsp",
       describeRoute({

@@ -112,6 +112,10 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     let syncedWorkspace = project.workspace.current()
 
     event.subscribe((event) => {
+      if ((event.type as string) === "server.skills.reloaded") {
+        void bootstrap()
+        return
+      }
       switch (event.type) {
         case "server.instance.disposed":
           void bootstrap()

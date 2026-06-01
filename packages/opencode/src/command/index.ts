@@ -65,11 +65,12 @@ export const Default = {
 export interface Interface {
   readonly get: (name: string) => Effect.Effect<Info | undefined>
   readonly list: () => Effect.Effect<Info[]>
+  readonly invalidate: () => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Command") {}
 
-export const layer = Layer.effect(
+export const layer: Layer.Layer<Service, never, Config.Service | MCP.Service | Skill.Service> = Layer.effect(
   Service,
   Effect.gen(function* () {
     const config = yield* Config.Service
@@ -175,14 +176,23 @@ export const layer = Layer.effect(
       return Object.values(s.commands)
     })
 
-    return Service.of({ get, list })
+    const invalidate = Effect.fn("Command.invalidate")(function* () {
+      yield* InstanceState.invalidate(state)
+    })
+
+    return Service.of({ get, list, invalidate })
   }),
 )
 
-export const defaultLayer = layer.pipe(
+export const defaultLayer: Layer.Layer<Service> = layer.pipe(
   Layer.provide(Config.defaultLayer),
   Layer.provide(MCP.defaultLayer),
   Layer.provide(Skill.defaultLayer),
 )
+
+export async function invalidate(): Promise<void> {
+  const { AppRuntime } = await import("@/effect/app-runtime")
+  return AppRuntime.runPromise(Service.use((svc) => svc.invalidate()))
+}
 
 export * as Command from "."
