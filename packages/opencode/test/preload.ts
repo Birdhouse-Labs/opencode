@@ -33,6 +33,14 @@ process.env["XDG_DATA_HOME"] = path.join(dir, "share")
 process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
 process.env["XDG_CONFIG_HOME"] = path.join(dir, "config")
 process.env["XDG_STATE_HOME"] = path.join(dir, "state")
+
+delete process.env["OPENCODE_XDG_DATA_HOME"]
+delete process.env["OPENCODE_XDG_CACHE_HOME"]
+delete process.env["OPENCODE_XDG_CONFIG_HOME"]
+delete process.env["OPENCODE_XDG_STATE_HOME"]
+delete process.env["OPENCODE_CONFIG_CONTENT"]
+delete process.env["OPENCODE_PROJECT_ID"]
+delete process.env["OPENCODE_DISABLE_GLOBAL_CONFIG"]
 process.env["OPENCODE_MODELS_PATH"] = path.join(import.meta.dir, "tool", "fixtures", "models-api.json")
 
 // Set test home directory to isolate tests from user's actual home directory

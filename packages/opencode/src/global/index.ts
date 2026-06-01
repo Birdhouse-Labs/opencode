@@ -7,10 +7,10 @@ import { Flock } from "@opencode-ai/shared/util/flock"
 
 const app = "opencode"
 
-const data = path.join(xdgData!, app)
-const cache = path.join(xdgCache!, app)
-const config = path.join(xdgConfig!, app)
-const state = path.join(xdgState!, app)
+const data = path.join(process.env["OPENCODE_XDG_DATA_HOME"] || xdgData!, app)
+const cache = path.join(process.env["OPENCODE_XDG_CACHE_HOME"] || xdgCache!, app)
+const config = path.join(process.env["OPENCODE_XDG_CONFIG_HOME"] || xdgConfig!, app)
+const state = path.join(process.env["OPENCODE_XDG_STATE_HOME"] || xdgState!, app)
 
 export const Path = {
   // Allow override via OPENCODE_TEST_HOME for test isolation

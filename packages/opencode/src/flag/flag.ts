@@ -110,4 +110,16 @@ export const Flag = {
   get OPENCODE_DISABLE_GLOBAL_CONFIG() {
     return truthy("OPENCODE_DISABLE_GLOBAL_CONFIG")
   },
+  get OPENCODE_XDG_DATA_HOME() {
+    return process.env["OPENCODE_XDG_DATA_HOME"]
+  },
+  get OPENCODE_XDG_CONFIG_HOME() {
+    return process.env["OPENCODE_XDG_CONFIG_HOME"]
+  },
+  get OPENCODE_XDG_CACHE_HOME() {
+    return process.env["OPENCODE_XDG_CACHE_HOME"]
+  },
+  get OPENCODE_XDG_STATE_HOME() {
+    return process.env["OPENCODE_XDG_STATE_HOME"]
+  },
 }
