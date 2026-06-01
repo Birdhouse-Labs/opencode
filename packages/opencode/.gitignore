@@ -7,3 +7,6 @@ src/provider/models-snapshot.js
 src/provider/models-snapshot.d.ts
 script/build-*.ts
 temporary-*.md
+
+# Birdhouse plugin (copied during build, not version controlled)
+src/plugin/birdhouse.ts
