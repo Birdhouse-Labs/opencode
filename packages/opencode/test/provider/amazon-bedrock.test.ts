@@ -82,6 +82,35 @@ test("Bedrock: falls back to AWS_REGION env var when no config region", async ()
   })
 })
 
+test("Bedrock: does not autoload when only AWS_REGION is set", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Filesystem.write(
+        path.join(dir, "opencode.json"),
+        JSON.stringify({
+          $schema: "https://opencode.ai/config.json",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      set("AWS_REGION", "eu-west-1")
+      set("AWS_PROFILE", "")
+      set("AWS_ACCESS_KEY_ID", "")
+      set("AWS_BEARER_TOKEN_BEDROCK", "")
+      set("AWS_WEB_IDENTITY_TOKEN_FILE", "")
+      delete process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+      delete process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI
+    },
+    fn: async () => {
+      const providers = await list()
+      expect(providers[ProviderID.amazonBedrock]).toBeUndefined()
+    },
+  })
+})
+
 test("Bedrock: loads when bearer token from auth.json is present", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

@@ -1206,11 +1206,14 @@ const layer: Layer.Layer<
         for (const [id, provider] of Object.entries(database)) {
           const providerID = ProviderID.make(id)
           if (disabled.has(providerID)) continue
-          const apiKey = provider.env.map((item) => envs[item]).find(Boolean)
+          const keyEnvVars = provider.env.filter(
+            (item) => !item.includes("REGION") && !item.includes("ENDPOINT") && !item.includes("URL"),
+          )
+          const apiKey = keyEnvVars.map((item) => envs[item]).find(Boolean)
           if (!apiKey) continue
           mergeProvider(providerID, {
             source: "env",
-            key: provider.env.length === 1 ? apiKey : undefined,
+            key: keyEnvVars.length === 1 ? apiKey : undefined,
           })
         }
 
@@ -1257,13 +1260,16 @@ const layer: Layer.Layer<
             continue
           }
           const result = yield* fn(data)
-          if (result && (result.autoload || providers[providerID])) {
+          if (result) {
             if (result.getModel) modelLoaders[providerID] = result.getModel
             if (result.vars) varsLoaders[providerID] = result.vars
             if (result.discoverModels) discoveryLoaders[providerID] = result.discoverModels
             const opts = result.options ?? {}
-            const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
-            mergeProvider(providerID, patch)
+            if (providers[providerID]) {
+              if (Object.keys(opts).length > 0) mergeProvider(providerID, { options: opts })
+            } else if (result.autoload) {
+              mergeProvider(providerID, { source: "custom", options: opts })
+            }
           }
         }
 
