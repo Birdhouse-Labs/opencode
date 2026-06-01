@@ -22,11 +22,22 @@ import { EffectBridge } from "@/effect"
 import { InstanceState } from "@/effect"
 import { errorMessage } from "@/util/error"
 import { PluginLoader } from "./loader"
+import { ConfigPlugin } from "@/config/plugin"
 import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } from "./shared"
 import { registerAdaptor } from "@/control-plane/adaptors"
 import type { WorkspaceAdaptor } from "@/control-plane/types"
 
 const log = Log.create({ service: "plugin" })
+
+const BUILTIN_LOCAL_LOADERS: Record<string, () => Promise<Record<string, unknown>>> = {
+  birdhouse: () => import("./birdhouse"),
+}
+
+export async function loadBuiltinLocalPlugin(spec: string) {
+  const loader = BUILTIN_LOCAL_LOADERS[spec]
+  if (!loader) return
+  return loader().catch(() => undefined)
+}
 
 type State = {
   hooks: Hooks[]
@@ -54,6 +65,8 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/Plugin") {}
 
 // Built-in plugins that are directly imported (not installed from npm)
+const BUILTIN_LOCAL = ["birdhouse"]
+
 const INTERNAL_PLUGINS: PluginInstance[] = [
   CodexAuthPlugin,
   CopilotAuthPlugin,
@@ -164,9 +177,32 @@ export const layer = Layer.effect(
         }
         if (plugins.length) yield* config.waitForDependencies()
 
-        const loaded = yield* Effect.promise(() =>
-          PluginLoader.loadExternal({
-            items: plugins,
+        const builtinLocal = plugins.filter((item) => BUILTIN_LOCAL.includes(ConfigPlugin.pluginSpecifier(item.spec)))
+        const externalPlugins = plugins.filter(
+          (item) => !BUILTIN_LOCAL.includes(ConfigPlugin.pluginSpecifier(item.spec)),
+        )
+
+        const loaded = yield* Effect.promise(async () => {
+          const builtinLoaded: PluginLoader.Loaded[] = []
+          for (const item of builtinLocal) {
+            const spec = ConfigPlugin.pluginSpecifier(item.spec)
+            const options = ConfigPlugin.pluginOptions(item.spec)
+            log.info("loading builtin local plugin", { path: item })
+            const mod = await loadBuiltinLocalPlugin(spec)
+            if (!mod) continue
+            builtinLoaded.push({
+              spec,
+              options,
+              deprecated: false,
+              mod,
+              source: "file",
+              target: spec,
+              entry: spec,
+            })
+          }
+
+          const externalLoaded = await PluginLoader.loadExternal({
+            items: externalPlugins,
             kind: "server",
             report: {
               start(candidate) {
@@ -203,8 +239,10 @@ export const layer = Layer.effect(
                 publishPluginError(`Failed to load plugin ${spec}: ${message}`)
               },
             },
-          }),
-        )
+          })
+
+          return [...builtinLoaded.filter((load) => load !== undefined), ...externalLoaded]
+        })
         for (const load of loaded) {
           if (!load) continue
 
