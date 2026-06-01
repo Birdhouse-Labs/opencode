@@ -4,7 +4,7 @@ This is the Birdhouse fork of [anomalyco/opencode](https://github.com/anomalyco/
 
 ## Our commits
 
-We maintain a set of commits on top of the latest tagged upstream release. The goal is a clean history where every commit passes CI independently. The current base is `v1.3.13`.
+We maintain a set of commits on top of the latest tagged upstream release. The goal is a clean history where every commit passes CI independently. The current base is `v1.4.11`.
 
 When upstream cuts a new release we rebase our commits onto the new tag, fix any failures introduced by each commit before moving on, and update this file.
 
@@ -41,7 +41,7 @@ When a commit introduces a test failure, we fix it with a `git commit --fixup <h
 To squash all pending fixups into their target commits:
 
 ```bash
-GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash v1.3.13
+GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash v1.4.11
 ```
 
-Replace `v1.3.13` with the current upstream base tag if it has changed.
+Replace `v1.4.11` with the current upstream base tag if it has changed.
