@@ -2,6 +2,7 @@ export * as Npm from "."
 
 import path from "path"
 import semver from "semver"
+import npa from "npm-package-arg"
 import { Effect, Schema, Context, Layer, Option, FileSystem } from "effect"
 import { NodeFileSystem } from "@effect/platform-node"
 import { AppFileSystem } from "@opencode-ai/shared/filesystem"
@@ -43,6 +44,14 @@ const illegal = process.platform === "win32" ? new Set(["<", ">", ":", '"', "|",
 export function sanitize(pkg: string) {
   if (!illegal) return pkg
   return Array.from(pkg, (char) => (illegal.has(char) || char.charCodeAt(0) < 32 ? "_" : char)).join("")
+}
+
+function packageName(spec: string) {
+  try {
+    return npa(spec).name ?? spec
+  } catch {
+    return spec
+  }
 }
 
 const resolveEntryPoint = (name: string, dir: string): EntryPoint => {
@@ -135,11 +144,18 @@ export const layer = Layer.effect(
 
     const add = Effect.fn("Npm.add")(function* (pkg: string) {
       const dir = directory(pkg)
+      const name = packageName(pkg)
 
       const tree = yield* reify({ dir, add: [pkg] })
       const first = tree.edgesOut.values().next().value?.to
-      if (!first) return yield* new InstallFailedError({ add: [pkg], dir })
-      return resolveEntryPoint(first.name, first.path)
+      if (first) return resolveEntryPoint(first.name, first.path)
+
+      const installed = path.join(dir, "node_modules", name)
+      if (yield* afs.existsSafe(installed)) {
+        return resolveEntryPoint(name, installed)
+      }
+
+      return yield* new InstallFailedError({ add: [pkg], dir })
     }, Effect.scoped)
 
     const install: Interface["install"] = Effect.fn("Npm.install")(function* (dir, input) {
