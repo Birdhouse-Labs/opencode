@@ -10,6 +10,7 @@ import type {
   AppLogResponses,
   AppSkillsErrors,
   AppSkillsResponses,
+  AppSkillsReloadResponses,
   Auth as Auth3,
   AuthRemoveErrors,
   AuthRemoveResponses,
@@ -531,6 +532,43 @@ export class App extends HeyApiClient {
     )
     return (options?.client ?? this.client).get<AppSkillsResponses, AppSkillsErrors, ThrowOnError>({
       url: "/skill",
+      ...options,
+      ...params,
+    })
+  }
+
+  private _skills?: Skills
+  get skills2(): Skills {
+    return (this._skills ??= new Skills({ client: this.client }))
+  }
+}
+
+export class Skills extends HeyApiClient {
+  /**
+   * Reload skills
+   *
+   * Reload skill definitions without disposing the current instance.
+   */
+  public reload<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<AppSkillsReloadResponses, unknown, ThrowOnError>({
+      url: "/skill/reload",
       ...options,
       ...params,
     })

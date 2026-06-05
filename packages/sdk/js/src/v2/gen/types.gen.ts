@@ -92,6 +92,7 @@ export type Event =
   | EventServerConnected
   | EventGlobalDisposed
   | EventServerInstanceDisposed
+  | EventServerSkillsReloaded
 
 export type QuestionReplied = {
   sessionID: string
@@ -1613,6 +1614,7 @@ export type GlobalEvent = {
         }
       }
     | EventServerInstanceDisposed
+    | EventServerSkillsReloaded
     | SyncEventSessionCreated
     | SyncEventSessionUpdated
     | SyncEventSessionDeleted
@@ -4915,6 +4917,14 @@ export type EventTodoUpdated = {
   }
 }
 
+export type EventServerSkillsReloaded = {
+  id: string
+  type: "server.skills.reloaded"
+  properties: {
+    names: Array<string>
+  }
+}
+
 export type EventLspUpdated = {
   id: string
   type: "lsp.updated"
@@ -5300,7 +5310,7 @@ export type GlobalHealthResponses = {
   200: {
     healthy: true
     version: string
-    birdhouseWorkspaceId: string | null
+    birdhouseWorkspaceId: string
   }
 }
 
@@ -6396,6 +6406,25 @@ export type AppSkillsResponses = {
 }
 
 export type AppSkillsResponse = AppSkillsResponses[keyof AppSkillsResponses]
+
+export type AppSkillsReloadData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/skill/reload"
+}
+
+export type AppSkillsReloadResponses = {
+  /**
+   * Skills reloaded
+   */
+  200: boolean
+}
+
+export type AppSkillsReloadResponse = AppSkillsReloadResponses[keyof AppSkillsReloadResponses]
 
 export type LspStatusData = {
   body?: never

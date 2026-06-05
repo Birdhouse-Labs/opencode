@@ -61,6 +61,7 @@ export interface Interface {
   readonly list: () => Effect.Effect<Info[]>
   readonly defaultInfo: () => Effect.Effect<Info>
   readonly defaultAgent: () => Effect.Effect<string>
+  readonly invalidate: () => Effect.Effect<void>
   readonly generate: (input: {
     description: string
     model?: { providerID: ProviderV2.ID; modelID: ModelV2.ID }
@@ -74,7 +75,7 @@ export interface Interface {
   >
 }
 
-type State = Omit<Interface, "generate">
+type State = Pick<Interface, "get" | "list" | "defaultAgent" | "defaultInfo">
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Agent") {}
 
@@ -349,6 +350,9 @@ export const layer = Layer.effect(
       defaultAgent: Effect.fn("Agent.defaultAgent")(function* () {
         return yield* InstanceState.useEffect(state, (s) => s.defaultAgent())
       }),
+      invalidate: Effect.fn("Agent.invalidate")(function* () {
+        yield* InstanceState.invalidate(state)
+      }),
       generate: Effect.fn("Agent.generate")(function* (input: {
         description: string
         model?: { providerID: ProviderV2.ID; modelID: ModelV2.ID }
@@ -422,12 +426,17 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer.pipe(
+export const defaultLayer: Layer.Layer<Service> = layer.pipe(
   Layer.provide(Plugin.defaultLayer),
   Layer.provide(Provider.defaultLayer),
   Layer.provide(Auth.defaultLayer),
   Layer.provide(Config.defaultLayer),
   Layer.provide(Skill.defaultLayer),
 )
+
+export async function invalidate(): Promise<void> {
+  const { AppRuntime } = await import("@/effect/app-runtime")
+  return AppRuntime.runPromise(Service.use((svc) => svc.invalidate()))
+}
 
 export * as Agent from "./agent"

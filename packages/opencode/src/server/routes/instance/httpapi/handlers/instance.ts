@@ -85,6 +85,13 @@ export const instanceHandlers = HttpApiBuilder.group(InstanceHttpApi, "instance"
       return yield* skill.all()
     })
 
+    const reloadSkills = Effect.fn("InstanceHttpApi.skillReload")(function* () {
+      yield* skill.reload()
+      yield* agent.invalidate()
+      yield* command.invalidate()
+      return true
+    })
+
     const getLsp = Effect.fn("InstanceHttpApi.lsp")(function* () {
       return yield* lsp.status()
     })
@@ -104,6 +111,7 @@ export const instanceHandlers = HttpApiBuilder.group(InstanceHttpApi, "instance"
       .handle("command", getCommand)
       .handle("agent", getAgent)
       .handle("skill", getSkill)
+      .handle("skillReload", reloadSkills)
       .handle("lsp", getLsp)
       .handle("formatter", getFormatter)
   }),

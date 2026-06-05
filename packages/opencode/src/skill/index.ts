@@ -3,6 +3,7 @@ import { pathToFileURL } from "url"
 import { Effect, Layer, Context, Schema } from "effect"
 import { NamedError } from "@opencode-ai/core/util/error"
 import type { Agent } from "@/agent/agent"
+import { EventV2 } from "@opencode-ai/core/event"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { Global } from "@opencode-ai/core/global"
@@ -95,12 +96,22 @@ type ScanState = {
   dirs: Set<string>
 }
 
+export const Event = {
+  Reloaded: EventV2.define({
+    type: "server.skills.reloaded",
+    schema: {
+      names: Schema.Array(Schema.String),
+    },
+  }),
+}
+
 export interface Interface {
   readonly get: (name: string) => Effect.Effect<Info | undefined>
   readonly require: (name: string) => Effect.Effect<Info, NotFoundError>
   readonly all: () => Effect.Effect<Info[]>
   readonly dirs: () => Effect.Effect<string[]>
   readonly available: (agent?: Agent.Info) => Effect.Effect<Info[]>
+  readonly reload: () => Effect.Effect<void>
 }
 
 const add = Effect.fnUntraced(function* (state: State, match: string, events: EventV2Bridge.Service["Service"]) {
@@ -314,7 +325,14 @@ export const layer = Layer.effect(
       return list.filter((skill) => Permission.evaluate("skill", skill.name, agent.permission).action !== "deny")
     })
 
-    return Service.of({ get, require, all, dirs, available })
+    const reload = Effect.fn("Skill.reload")(function* () {
+      const names = yield* all().pipe(Effect.map((skills) => skills.map((skill) => skill.name).sort()))
+      yield* InstanceState.invalidate(discovered)
+      yield* InstanceState.invalidate(state)
+      yield* events.publish(Event.Reloaded, { names })
+    })
+
+    return Service.of({ get, require, all, dirs, available, reload })
   }),
 )
 
@@ -352,6 +370,18 @@ export function fmt(list: Info[], opts: { verbose: boolean }) {
       .toSorted((a, b) => a.name.localeCompare(b.name))
       .map((skill) => `- **${skill.name}**: ${skill.description}`),
   ].join("\n")
+}
+
+export async function reload(): Promise<void> {
+  const { AppRuntime } = await import("@/effect/app-runtime")
+  const { Agent } = await import("@/agent/agent")
+  const { Command } = await import("@/command")
+  return AppRuntime.runPromise(
+    Service.use((svc) => svc.reload()).pipe(
+      Effect.andThen(Agent.Service.use((svc) => svc.invalidate())),
+      Effect.andThen(Command.Service.use((svc) => svc.invalidate())),
+    ),
+  )
 }
 
 export * as Skill from "."
