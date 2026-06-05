@@ -6,3 +6,6 @@ app.log
 script/build-*.ts
 temporary-*.md
 .artifacts
+
+# Birdhouse plugin (copied during build, not version controlled)
+src/plugin/birdhouse.ts
