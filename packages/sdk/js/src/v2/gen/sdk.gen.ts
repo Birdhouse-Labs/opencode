@@ -9,8 +9,9 @@ import type {
   AppLogErrors,
   AppLogResponses,
   AppSkillsErrors,
-  AppSkillsResponses,
+  AppSkillsReloadErrors,
   AppSkillsReloadResponses,
+  AppSkillsResponses,
   Auth as Auth3,
   AuthRemoveErrors,
   AuthRemoveResponses,
@@ -221,6 +222,8 @@ import type {
   SessionUnshareResponses,
   SessionUpdateErrors,
   SessionUpdateResponses,
+  SessionWaitErrors,
+  SessionWaitResponses,
   SubtaskPartInput,
   SyncHistoryListErrors,
   SyncHistoryListResponses,
@@ -431,6 +434,38 @@ export class Auth extends HeyApiClient {
   }
 }
 
+export class Skills extends HeyApiClient {
+  /**
+   * Reload skills
+   *
+   * Reload skill definitions without disposing the current instance.
+   */
+  public reload<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<AppSkillsReloadResponses, AppSkillsReloadErrors, ThrowOnError>({
+      url: "/skill/reload",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class App extends HeyApiClient {
   /**
    * Write log
@@ -540,38 +575,6 @@ export class App extends HeyApiClient {
   private _skills?: Skills
   get skills2(): Skills {
     return (this._skills ??= new Skills({ client: this.client }))
-  }
-}
-
-export class Skills extends HeyApiClient {
-  /**
-   * Reload skills
-   *
-   * Reload skill definitions without disposing the current instance.
-   */
-  public reload<ThrowOnError extends boolean = false>(
-    parameters?: {
-      directory?: string
-      workspace?: string
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "query", key: "directory" },
-            { in: "query", key: "workspace" },
-          ],
-        },
-      ],
-    )
-    return (options?.client ?? this.client).post<AppSkillsReloadResponses, unknown, ThrowOnError>({
-      url: "/skill/reload",
-      ...options,
-      ...params,
-    })
   }
 }
 
@@ -3922,6 +3925,38 @@ export class Session2 extends HeyApiClient {
         ...options?.headers,
         ...params.headers,
       },
+    })
+  }
+
+  /**
+   * Wait for session completion
+   *
+   * Block until the session reaches its final assistant message.
+   */
+  public waitForCompletion<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionWaitResponses, SessionWaitErrors, ThrowOnError>({
+      url: "/session/{sessionID}/wait",
+      ...options,
+      ...params,
     })
   }
 

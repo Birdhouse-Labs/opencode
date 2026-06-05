@@ -227,6 +227,11 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return yield* fork({ params: ctx.params, payload })
     })
 
+    const wait = Effect.fn("SessionHttpApi.wait")(function* (ctx: { params: { sessionID: SessionID } }) {
+      yield* requireSession(ctx.params.sessionID)
+      return yield* promptSvc.loop({ sessionID: ctx.params.sessionID })
+    })
+
     const abort = Effect.fn("SessionHttpApi.abort")(function* (ctx: { params: { sessionID: SessionID } }) {
       yield* promptSvc.cancel(ctx.params.sessionID)
       return true
@@ -423,6 +428,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("remove", remove)
       .handle("update", update)
       .handleRaw("fork", forkRaw)
+      .handle("wait", wait)
       .handle("abort", abort)
       .handle("init", init)
       .handle("share", share)

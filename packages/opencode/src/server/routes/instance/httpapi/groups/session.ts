@@ -88,6 +88,7 @@ export const SessionPaths = {
   remove: `${root}/:sessionID`,
   update: `${root}/:sessionID`,
   fork: `${root}/:sessionID/fork`,
+  wait: `${root}/:sessionID/wait`,
   abort: `${root}/:sessionID/abort`,
   share: `${root}/:sessionID/share`,
   init: `${root}/:sessionID/init`,
@@ -248,6 +249,18 @@ export const SessionApi = HttpApi.make("session")
             identifier: "session.fork",
             summary: "Fork session",
             description: "Create a new session by forking an existing session at a specific message point.",
+          }),
+        ),
+        HttpApiEndpoint.post("wait", SessionPaths.wait, {
+          params: { sessionID: SessionID },
+          query: WorkspaceRoutingQuery,
+          success: described(SessionV1.WithParts, "Completed assistant message"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.wait",
+            summary: "Wait for session completion",
+            description: "Block until the session reaches its final assistant message.",
           }),
         ),
         HttpApiEndpoint.post("abort", SessionPaths.abort, {

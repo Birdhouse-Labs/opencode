@@ -68,6 +68,7 @@ export type Event =
   | EventLspUpdated
   | EventPermissionAsked
   | EventPermissionReplied
+  | EventServerSkillsReloaded
   | EventTuiPromptAppend2
   | EventTuiCommandExecute2
   | EventTuiToastShow2
@@ -92,7 +93,6 @@ export type Event =
   | EventServerConnected
   | EventGlobalDisposed
   | EventServerInstanceDisposed
-  | EventServerSkillsReloaded
 
 export type QuestionReplied = {
   sessionID: string
@@ -1395,6 +1395,13 @@ export type GlobalEvent = {
       }
     | {
         id: string
+        type: "server.skills.reloaded"
+        properties: {
+          names: Array<string>
+        }
+      }
+    | {
+        id: string
         type: "tui.prompt.append"
         properties: {
           text: string
@@ -1614,7 +1621,6 @@ export type GlobalEvent = {
         }
       }
     | EventServerInstanceDisposed
-    | EventServerSkillsReloaded
     | SyncEventSessionCreated
     | SyncEventSessionUpdated
     | SyncEventSessionDeleted
@@ -4917,14 +4923,6 @@ export type EventTodoUpdated = {
   }
 }
 
-export type EventServerSkillsReloaded = {
-  id: string
-  type: "server.skills.reloaded"
-  properties: {
-    names: Array<string>
-  }
-}
-
 export type EventLspUpdated = {
   id: string
   type: "lsp.updated"
@@ -4959,6 +4957,14 @@ export type EventPermissionReplied = {
     sessionID: string
     requestID: string
     reply: "once" | "always" | "reject"
+  }
+}
+
+export type EventServerSkillsReloaded = {
+  id: string
+  type: "server.skills.reloaded"
+  properties: {
+    names: Array<string>
   }
 }
 
@@ -6416,6 +6422,15 @@ export type AppSkillsReloadData = {
   }
   url: "/skill/reload"
 }
+
+export type AppSkillsReloadErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type AppSkillsReloadError = AppSkillsReloadErrors[keyof AppSkillsReloadErrors]
 
 export type AppSkillsReloadResponses = {
   /**
@@ -8087,6 +8102,43 @@ export type SessionForkResponses = {
 }
 
 export type SessionForkResponse = SessionForkResponses[keyof SessionForkResponses]
+
+export type SessionWaitData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/wait"
+}
+
+export type SessionWaitErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionWaitError = SessionWaitErrors[keyof SessionWaitErrors]
+
+export type SessionWaitResponses = {
+  /**
+   * Completed assistant message
+   */
+  200: {
+    info: Message
+    parts: Array<Part>
+  }
+}
+
+export type SessionWaitResponse = SessionWaitResponses[keyof SessionWaitResponses]
 
 export type SessionAbortData = {
   body?: never
