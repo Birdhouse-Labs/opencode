@@ -26,7 +26,7 @@ const Event = Schema.Struct({
   type: Schema.String,
   location: Schema.Struct({
     directory: Schema.String,
-    project: Schema.Struct({ id: Schema.String, directory: Schema.String }),
+    project: Schema.optional(Schema.Struct({ id: Schema.String, directory: Schema.String })),
   }),
   data: Schema.Unknown,
 })
@@ -77,7 +77,7 @@ describe("v2 location HttpApi", () => {
     expect(created.status).toBe(200)
     expect(await readEventType(reader, "session.created")).toMatchObject({
       type: "session.created",
-      location: { directory: tmp.path, project: { directory: tmp.path } },
+      location: { directory: tmp.path, project: { id: expect.any(String), directory: tmp.path } },
       data: { sessionID: expect.any(String) },
     })
     await reader.cancel()
