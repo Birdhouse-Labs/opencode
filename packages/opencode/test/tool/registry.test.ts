@@ -1,6 +1,8 @@
 import { afterEach, describe, expect } from "bun:test"
 import path from "path"
 import fs from "fs/promises"
+import { Permission } from "@/permission"
+import { Auth } from "@/auth"
 import { fileURLToPath, pathToFileURL } from "url"
 import { Effect, Layer, Result, Schema } from "effect"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -103,11 +105,72 @@ const withBrokenPlugin = testEffect(
   Layer.mergeAll(registryLayer({ plugin: brokenPluginLayer }), node, Agent.defaultLayer),
 )
 
+const taskDisabledConfigLayer = TestConfig.layer({
+  directories: () => InstanceState.directory.pipe(Effect.map((dir) => [path.join(dir, ".opencode")])),
+  get: () => Effect.succeed({ permission: { task: "deny" as const } }),
+})
+
+const agentLayerTaskDisabled = Agent.layer.pipe(
+  Layer.provide(Plugin.defaultLayer),
+  Layer.provide(Provider.defaultLayer),
+  Layer.provide(Auth.defaultLayer),
+  Layer.provide(taskDisabledConfigLayer),
+  Layer.provide(Skill.defaultLayer),
+)
+
+const registryLayerTaskDisabled = ToolRegistry.layer
+  .pipe(
+    Layer.provide(taskDisabledConfigLayer),
+    Layer.provide(Plugin.defaultLayer),
+    Layer.provide(Question.defaultLayer),
+    Layer.provide(Todo.defaultLayer),
+    Layer.provide(Skill.defaultLayer),
+    Layer.provide(agentLayerTaskDisabled),
+    Layer.provide(Session.defaultLayer),
+    Layer.provide(Layer.mergeAll(SessionStatus.defaultLayer, BackgroundJob.defaultLayer)),
+    Layer.provide(Provider.defaultLayer),
+    Layer.provide(Layer.mergeAll(Git.defaultLayer, RepositoryCache.defaultLayer)),
+    Layer.provide(Reference.defaultLayer),
+    Layer.provide(LSP.defaultLayer),
+    Layer.provide(Instruction.defaultLayer),
+    Layer.provide(FSUtil.defaultLayer),
+    Layer.provide(EventV2Bridge.defaultLayer),
+    Layer.provide(FetchHttpClient.layer),
+    Layer.provide(Format.defaultLayer),
+    Layer.provide(Layer.mergeAll(node, Database.defaultLayer)),
+    Layer.provide(Ripgrep.defaultLayer),
+    Layer.provide(Truncate.defaultLayer),
+  )
+  .pipe(Layer.provide(RuntimeFlags.layer({})))
+
+const withTaskDisabled = testEffect(Layer.mergeAll(registryLayerTaskDisabled, node, agentLayerTaskDisabled))
+
 afterEach(async () => {
   await disposeAllInstances()
 })
 
 describe("tool.registry", () => {
+  it.instance("keeps task registered by default", () =>
+    Effect.gen(function* () {
+      const registry = yield* ToolRegistry.Service
+      const ids = yield* registry.ids()
+
+      expect(ids).toContain("task")
+    }),
+  )
+
+  withTaskDisabled.instance("marks task disabled for agents when config disables it", () =>
+    Effect.gen(function* () {
+      const agentSvc = yield* Agent.Service
+      const registry = yield* ToolRegistry.Service
+      const agent = yield* agentSvc.get("build")
+      const ids = yield* registry.ids()
+      const disabled = Permission.disabled(ids, agent!.permission)
+
+      expect(disabled.has("task")).toBe(true)
+    }),
+  )
+
   it.instance("does not expose task_status", () =>
     Effect.gen(function* () {
       const registry = yield* ToolRegistry.Service
