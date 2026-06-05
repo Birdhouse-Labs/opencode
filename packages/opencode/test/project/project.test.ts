@@ -117,6 +117,26 @@ function waitForProjectIcon(id: ProjectV2.ID, attempts = 50): Effect.Effect<Proj
 }
 
 describe("Project.fromDirectory", () => {
+  it.live("uses OPENCODE_PROJECT_ID when provided", () =>
+    Effect.gen(function* () {
+      const project = yield* Project.Service
+      const tmp = yield* tmpdirScoped({ git: true })
+      const previous = process.env.OPENCODE_PROJECT_ID
+      process.env.OPENCODE_PROJECT_ID = "project-forced"
+
+      try {
+        const result = yield* project.fromDirectory(tmp)
+
+        expect(result.project.id).toBe(ProjectV2.ID.make("project-forced"))
+        expect(result.project.vcs).toBe("git")
+        expect(result.project.worktree).toBe(tmp)
+      } finally {
+        if (previous === undefined) delete process.env.OPENCODE_PROJECT_ID
+        else process.env.OPENCODE_PROJECT_ID = previous
+      }
+    }),
+  )
+
   it.live("should handle git repository with no commits", () =>
     Effect.gen(function* () {
       const project = yield* Project.Service

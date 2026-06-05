@@ -11,6 +11,7 @@ import { described } from "./metadata"
 const GlobalHealth = Schema.Struct({
   healthy: Schema.Literal(true),
   version: Schema.String,
+  birdhouseWorkspaceId: Schema.NullOr(Schema.String),
 })
 
 const SyncEventSchemas = EventV2.registry

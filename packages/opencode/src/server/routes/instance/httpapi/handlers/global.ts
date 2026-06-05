@@ -73,7 +73,11 @@ export const globalHandlers = HttpApiBuilder.group(RootHttpApi, "global", (handl
     const bridge = yield* EffectBridge.make()
 
     const health = Effect.fn("GlobalHttpApi.health")(function* () {
-      return { healthy: true as const, version: InstallationVersion }
+      return {
+        healthy: true as const,
+        version: InstallationVersion,
+        birdhouseWorkspaceId: process.env.BIRDHOUSE_WORKSPACE_ID ?? null,
+      }
     })
 
     const event = Effect.fn("GlobalHttpApi.event")(function* () {

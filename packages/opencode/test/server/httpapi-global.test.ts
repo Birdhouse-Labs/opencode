@@ -43,6 +43,32 @@ const apiLayer = HttpRouter.serve(
 const it = testEffect(apiLayer)
 
 describe("global HttpApi", () => {
+  it.live("health returns null birdhouseWorkspaceId when env var is unset", () =>
+    Effect.gen(function* () {
+      delete process.env.BIRDHOUSE_WORKSPACE_ID
+      const response = yield* HttpClient.get(GlobalPaths.health)
+
+      expect(response.status).toBe(200)
+      const body = yield* response.json
+      expect((body as Record<string, unknown>).birdhouseWorkspaceId).toBeNull()
+    }),
+  )
+
+  it.live("health returns birdhouseWorkspaceId when env var is set", () =>
+    Effect.gen(function* () {
+      process.env.BIRDHOUSE_WORKSPACE_ID = "ws_123"
+      try {
+        const response = yield* HttpClient.get(GlobalPaths.health)
+
+        expect(response.status).toBe(200)
+        const body = yield* response.json
+        expect((body as Record<string, unknown>).birdhouseWorkspaceId).toBe("ws_123")
+      } finally {
+        delete process.env.BIRDHOUSE_WORKSPACE_ID
+      }
+    }),
+  )
+
   it.live("upgrades to latest when the request body is omitted", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.post(GlobalPaths.upgrade)
