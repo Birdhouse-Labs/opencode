@@ -2406,6 +2406,27 @@ export type FormatterStatus = {
   enabled: boolean
 }
 
+export type LlmGeneratePayload = {
+  prompt?: string
+  system?: Array<string>
+  message: string
+  agent?: string
+  model?: {
+    providerID: string
+    modelID: string
+  }
+  small?: boolean
+  maxTokens?: number
+}
+
+export type LlmGenerateResult = {
+  text: string
+  usage?: {
+    inputTokens: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    outputTokens: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }
+}
+
 export type McpStatusConnected = {
   status: "connected"
 }
@@ -6497,6 +6518,34 @@ export type FormatterStatusResponses = {
 
 export type FormatterStatusResponse = FormatterStatusResponses[keyof FormatterStatusResponses]
 
+export type LlmGenerateData = {
+  body?: LlmGeneratePayload
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/llm/generate"
+}
+
+export type LlmGenerateErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type LlmGenerateError = LlmGenerateErrors[keyof LlmGenerateErrors]
+
+export type LlmGenerateResponses = {
+  /**
+   * Generated text response
+   */
+  200: LlmGenerateResult
+}
+
+export type LlmGenerateResponse = LlmGenerateResponses[keyof LlmGenerateResponses]
+
 export type McpStatusData = {
   body?: never
   path?: never
@@ -8117,11 +8166,11 @@ export type SessionWaitData = {
 
 export type SessionWaitErrors = {
   /**
-   * Bad request
+   * BadRequest | InvalidRequestError
    */
-  400: BadRequestError
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
   /**
-   * Not found
+   * NotFoundError
    */
   404: NotFoundError
 }

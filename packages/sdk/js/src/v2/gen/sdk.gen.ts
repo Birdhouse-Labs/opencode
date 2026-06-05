@@ -94,6 +94,9 @@ import type {
   GlobalUpgradeResponses,
   InstanceDisposeErrors,
   InstanceDisposeResponses,
+  LlmGenerateErrors,
+  LlmGeneratePayload,
+  LlmGenerateResponses,
   LspStatusErrors,
   LspStatusResponses,
   McpAddErrors,
@@ -2266,6 +2269,45 @@ export class Formatter extends HeyApiClient {
   }
 }
 
+export class Llm extends HeyApiClient {
+  /**
+   * Generate LLM response
+   *
+   * Generate a one-off LLM response without creating a session or storing messages.
+   */
+  public generate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      llmGeneratePayload?: LlmGeneratePayload
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { key: "llmGeneratePayload", map: "body" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<LlmGenerateResponses, LlmGenerateErrors, ThrowOnError>({
+      url: "/llm/generate",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Auth2 extends HeyApiClient {
   /**
    * Remove MCP OAuth
@@ -3933,7 +3975,7 @@ export class Session2 extends HeyApiClient {
    *
    * Block until the session reaches its final assistant message.
    */
-  public waitForCompletion<ThrowOnError extends boolean = false>(
+  public wait<ThrowOnError extends boolean = false>(
     parameters: {
       sessionID: string
       directory?: string
@@ -5936,6 +5978,11 @@ export class OpencodeClient extends HeyApiClient {
   private _formatter?: Formatter
   get formatter(): Formatter {
     return (this._formatter ??= new Formatter({ client: this.client }))
+  }
+
+  private _llm?: Llm
+  get llm(): Llm {
+    return (this._llm ??= new Llm({ client: this.client }))
   }
 
   private _mcp?: Mcp
