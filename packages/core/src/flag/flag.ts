@@ -74,6 +74,9 @@ export const Flag = {
   get OPENCODE_CLIENT() {
     return process.env["OPENCODE_CLIENT"] ?? "cli"
   },
+  get OPENCODE_DISABLE_GLOBAL_CONFIG() {
+    return truthy("OPENCODE_DISABLE_GLOBAL_CONFIG")
+  },
   get OPENCODE_XDG_DATA_HOME() {
     return process.env["OPENCODE_XDG_DATA_HOME"]
   },
